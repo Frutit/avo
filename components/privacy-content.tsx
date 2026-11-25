@@ -1,16 +1,16 @@
-import Link from "next/link";
+import { Link } from "react-router";
 
 import { SUPPORT_EMAIL } from "@/lib/legal";
 import { publicEnv } from "@/lib/public-env";
 
-const controllerName = publicEnv.NEXT_PUBLIC_PRIVACY_CONTROLLER_NAME;
-const controllerAddress = publicEnv.NEXT_PUBLIC_PRIVACY_CONTROLLER_ADDRESS;
+const controllerName = publicEnv.VITE_PRIVACY_CONTROLLER_NAME;
+const controllerAddress = publicEnv.VITE_PRIVACY_CONTROLLER_ADDRESS;
 
 export function PrivacyContent() {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-10 sm:px-8">
       <header className="border-b border-line pb-6">
-        <Link href="/" className="text-sm font-semibold underline underline-offset-4">
+        <Link to="/" className="text-sm font-semibold underline underline-offset-4">
           Avo
         </Link>
         <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Tus datos</p>
@@ -63,10 +63,11 @@ export function PrivacyContent() {
             solicites su eliminación.
           </p>
           <p className="mt-2">
-            Usamos Vercel para alojar la app y Neon para almacenar datos de cuenta y copias remotas
-            existentes. Estos proveedores pueden procesar datos técnicos y almacenar información fuera de tu
-            país. Google y Meta procesan el inicio de sesión según sus propias políticas. Avo usa cookies de
-            sesión y almacenamiento del navegador para funciones necesarias, no para seguimiento publicitario.
+            Usamos Cloudflare Workers para alojar la app y Cloudflare D1 para almacenar los datos de cuenta.
+            Las copias históricas pueden conservarse durante la migración y recuperación. Estos servicios
+            pueden procesar datos técnicos y almacenar información fuera de tu país. Google y Meta procesan el
+            inicio de sesión según sus propias políticas. Avo usa cookies de sesión y almacenamiento del
+            navegador para funciones necesarias, no para seguimiento publicitario.
           </p>
         </section>
 
@@ -81,7 +82,7 @@ export function PrivacyContent() {
           </p>
           <p className="mt-2">
             Consulta la{" "}
-            <Link className="font-semibold underline underline-offset-4" href="/data-deletion">
+            <Link className="font-semibold underline underline-offset-4" to="/data-deletion">
               página de eliminación de datos
             </Link>{" "}
             para borrar tu copia local o solicitar la eliminación de tu cuenta. Borrar una no borra la otra.
@@ -110,10 +111,10 @@ export function PrivacyContent() {
         aria-label="Enlaces legales"
         className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-5 text-sm"
       >
-        <Link className="font-semibold underline underline-offset-4" href="/data-deletion">
+        <Link className="font-semibold underline underline-offset-4" to="/data-deletion">
           Eliminación de datos
         </Link>
-        <Link className="font-semibold underline underline-offset-4" href="/">
+        <Link className="font-semibold underline underline-offset-4" to="/">
           Volver a Avo
         </Link>
       </nav>

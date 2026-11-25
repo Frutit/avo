@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { useMessages, useTranslations } from "next-intl";
+import { useMessages, useTranslations } from "use-intl";
 import { chooseVoicePhrase, type VoiceTone } from "@/lib/domain/voice";
 import { voicePhrasesFromMessages } from "@/lib/i18n/voice";
 import { ConfirmDialog } from "./confirm-dialog";

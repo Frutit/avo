@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
 import { describe, expect, it } from "vitest";
 import { TaskDeck } from "./task-deck";
 import type { FranjaTask } from "./franja-task";
@@ -24,7 +24,7 @@ const tasks: FranjaTask[] = ["Bañarme", "Cepillarme los dientes", "Preparar mi 
 function renderDeck(locale: "es" | "en", count = 3) {
   const messages = locale === "es" ? es : en;
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
+    <IntlProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
       <TaskDeck
         tasks={tasks.slice(0, count)}
         handId="hand:test"
@@ -41,7 +41,7 @@ function renderDeck(locale: "es" | "en", count = 3) {
           </button>
         )}
       />
-    </NextIntlClientProvider>,
+    </IntlProvider>,
   );
 }
 

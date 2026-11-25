@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import type { ThemeMode } from "@/lib/domain/theme";
 import { SelectControl } from "./select-control";
 

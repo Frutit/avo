@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { motion, useReducedMotion } from "motion/react";
 import type { Task } from "@/lib/domain/types";
 import type { RoutineProgress } from "@/lib/domain/selection";

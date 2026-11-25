@@ -27,7 +27,7 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { Toast } from "@base-ui/react/toast";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 import { HelpTip } from "./help-tip";
 import { MissedBadge } from "./missed-badge";
@@ -734,7 +734,6 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
     if (preferences.pending || preferences.failed) return;
     const next = readTaskOrder(taskOrderStorageKey);
     orderRef.current = next;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTaskOrder(next);
   }, [taskOrderStorageKey, revision, preferences.pending, preferences.failed]);
 

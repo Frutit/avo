@@ -7,7 +7,7 @@ import { Menu } from "@base-ui/react/menu";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { Toast } from "@base-ui/react/toast";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { openDatabase } from "@/lib/db/database";
 import {

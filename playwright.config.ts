@@ -1,10 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Public browser journeys against a production build.
- * Run `npm run build` first; this config starts `next start`, it does not build.
- * A build is required because the service worker, headers, and Cache Components
- * behavior differ from `next dev`.
+ * Public browser journeys against a production Vite/Workers build.
+ * Run `npm run build` first; this config starts the production preview only.
  */
 const port = 3200;
 const baseURL = `http://127.0.0.1:${port}`;
@@ -22,7 +20,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `npm start -- -p ${port}`,
+    command: `npm run start -- --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000,

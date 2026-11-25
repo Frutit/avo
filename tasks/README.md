@@ -5,7 +5,7 @@ Git and linked archives preserve history.
 
 ## Current focus
 
-None.
+- [033 — Migrar Avo a Cloudflare Free](active/033-cloudflare-d1-migration.md) — candidato y respaldo verificados en local; sigue restaurar D1 y publicar el Worker de producción.
 
 ## Backlog (in priority order)
 
@@ -47,7 +47,7 @@ The folder is the status. Do not duplicate it in a task header.
 Use `NNN-short-title.md` with an unused id across all task folders.
 Start from [TEMPLATE.md](TEMPLATE.md).
 
-Next id: **033** (IDs 008–010 remain retired; all IDs through 032 are assigned. Diagnostics was reassigned from branch-local 023 to 026 with owner approval during the merge).
+Next id: **034** (IDs 008–010 remain retired; all IDs through 033 are assigned. Diagnostics was reassigned from branch-local 023 to 026 with owner approval during the merge).
 
 ## Board conventions
 

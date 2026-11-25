@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router";
 
 import { LocalDataDeletion } from "@/components/local-data-deletion";
 import { SUPPORT_EMAIL } from "@/lib/legal";
@@ -9,7 +9,7 @@ export function DataDeletionContent() {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 pb-16 pt-10 sm:px-8">
       <header className="border-b border-line pb-6">
-        <Link href="/" className="text-sm font-semibold underline underline-offset-4">
+        <Link to="/" className="text-sm font-semibold underline underline-offset-4">
           Avo
         </Link>
         <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Tus datos</p>
@@ -79,10 +79,10 @@ export function DataDeletionContent() {
         aria-label="Enlaces legales"
         className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-5 text-sm"
       >
-        <Link className="font-semibold underline underline-offset-4" href="/privacy">
+        <Link className="font-semibold underline underline-offset-4" to="/privacy">
           Aviso de privacidad
         </Link>
-        <Link className="font-semibold underline underline-offset-4" href="/">
+        <Link className="font-semibold underline underline-offset-4" to="/">
           Volver a Avo
         </Link>
       </nav>

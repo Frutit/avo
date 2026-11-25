@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
 import { describe, expect, it } from "vitest";
 import type { OutboxItem } from "@/lib/sync/protocol";
 import es from "@/messages/es.json";
@@ -28,15 +28,11 @@ function renderNotice(locale: "es" | "en", overrides: Partial<WorkspaceValue> = 
     ...overrides,
   };
   return renderToStaticMarkup(
-    <NextIntlClientProvider
-      locale={locale}
-      messages={locale === "es" ? es : en}
-      timeZone="America/Mexico_City"
-    >
+    <IntlProvider locale={locale} messages={locale === "es" ? es : en} timeZone="America/Mexico_City">
       <WorkspaceContext value={workspace}>
         <PersistenceNotice />
       </WorkspaceContext>
-    </NextIntlClientProvider>,
+    </IntlProvider>,
   );
 }
 

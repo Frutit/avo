@@ -23,6 +23,7 @@ export function checkDependencyPolicy({ manifest, lock, npmrc, userAgent, nodeVe
   for (const kind of ["dependencies", "devDependencies"]) {
     assert.deepEqual(root[kind], manifest[kind], `Manifest/lock ${kind} mismatch`);
   }
+  const integrity = /^sha512-[A-Za-z0-9+/]+=*$/;
   for (const [path, pkg] of Object.entries(lock.packages)) {
     if (!path) continue;
     assert.ok(!pkg.link, `Unreviewed linked dependency: ${path}`);
@@ -32,7 +33,18 @@ export function checkDependencyPolicy({ manifest, lock, npmrc, userAgent, nodeVe
     assert.match(pkg.version ?? "", /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/, `Missing exact version: ${path}`);
     if (pkg.resolved !== undefined)
       assert.match(pkg.resolved, /^https:\/\/registry\.npmjs\.org\//, `Unreviewed registry URL: ${path}`);
-    assert.match(pkg.integrity ?? "", /^sha512-[A-Za-z0-9+/]+=*$/, `Missing integrity: ${path}`);
+    if (pkg.inBundle === true && pkg.resolved === undefined && pkg.integrity === undefined) {
+      const separator = path.lastIndexOf("/node_modules/");
+      const parent = separator < 0 ? undefined : lock.packages[path.slice(0, separator)];
+      const child = path.slice(separator + "/node_modules/".length);
+      // The parent's pinned tarball supplies and authenticates its bundled package.
+      assert.ok(
+        parent?.bundleDependencies?.includes(child) && integrity.test(parent.integrity ?? ""),
+        `Unverified bundled dependency: ${path}`,
+      );
+    } else {
+      assert.match(pkg.integrity ?? "", integrity, `Missing integrity: ${path}`);
+    }
   }
 }
 

@@ -1,14 +1,10 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Formatting is owned by Prettier; keep ESLint to correctness rules.
+export default defineConfig([
+  ...tseslint.configs.recommended,
   prettier,
-  // Dependency direction: shared modules never reach back into the router.
   {
     files: ["lib/**/*.{ts,tsx}"],
     rules: {
@@ -18,22 +14,12 @@ const eslintConfig = defineConfig([
           patterns: [
             {
               group: ["@/app/*", "../app/*", "../../app/*"],
-              message:
-                "lib/ must not depend on app/ routes. Move shared code down to lib/ or the boundary test to tests/.",
+              message: "Shared lib modules must not import app routes.",
             },
           ],
         },
       ],
     },
   },
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
+  globalIgnores([".next/**", ".react-router/**", ".wrangler/**", "build/**", "coverage/**"]),
 ]);
-
-export default eslintConfig;

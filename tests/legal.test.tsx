@@ -1,23 +1,22 @@
 import type { ComponentType } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 
-import PrivacyPage from "@/app/privacy/page";
-import DataDeletionPage from "@/app/data-deletion/page";
+import { PrivacyContent as PrivacyPage } from "@/components/privacy-content";
+import { DataDeletionContent as DataDeletionPage } from "@/components/data-deletion-content";
 import es from "@/messages/es.json";
 import en from "@/messages/en.json";
 import { SUPPORT_EMAIL } from "@/lib/legal";
 
 function renderPage(Page: ComponentType, locale: "es" | "en" = "es") {
   return renderToStaticMarkup(
-    <NextIntlClientProvider
-      locale={locale}
-      messages={locale === "es" ? es : en}
-      timeZone="America/Mexico_City"
-    >
-      <Page />
-    </NextIntlClientProvider>,
+    <IntlProvider locale={locale} messages={locale === "es" ? es : en} timeZone="America/Mexico_City">
+      <MemoryRouter>
+        <Page />
+      </MemoryRouter>
+    </IntlProvider>,
   );
 }
 

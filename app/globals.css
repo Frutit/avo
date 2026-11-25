@@ -1168,6 +1168,7 @@ body > * {
 
   .peek-front .first-title {
     font-size: clamp(1.8rem, 6vw, 2.6rem);
+    min-height: 2.1em;
   }
 
   .peek-front .first-actions {

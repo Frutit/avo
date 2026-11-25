@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { Image } from "@/components/compat-image";
+import { Link } from "react-router";
+import { useTranslations } from "use-intl";
 import { lockAccountAccess } from "@/lib/sync/access";
 import { TaskDeckSkeleton } from "./task-deck-skeleton";
 
@@ -111,10 +111,10 @@ export function WorkspaceFallback({
           <noscript>
             <p className="text-sm leading-6 text-muted">{t("javascriptRequired")}</p>
             <nav className="mt-6 flex gap-5 text-sm">
-              <Link href="/privacy" className="underline">
+              <Link to="/privacy" className="underline">
                 {t("privacy")}
               </Link>
-              <Link href="/data-deletion" className="underline">
+              <Link to="/data-deletion" className="underline">
                 {t("deletion")}
               </Link>
             </nav>

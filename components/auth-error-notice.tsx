@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth-error";
 import { takeAuthCallbackError } from "@/lib/platform/auth-callback-error";
@@ -28,7 +28,6 @@ export function AuthErrorNotice() {
     const code = takeAuthCallbackError(window.location, window.history);
     const mapped = authErrorKey(code);
     // Browser-only value read after hydration; SSR has no redirect to inspect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (mapped) setKey(mapped);
   }, []);
 

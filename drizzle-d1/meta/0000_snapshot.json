@@ -1,0 +1,1007 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "6225e1f5-ca57-4de4-bd1d-d6bd8ea1fb39",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "runo_auth_accounts": {
+      "name": "runo_auth_accounts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_auth_accounts_user_id_idx": {
+          "name": "runo_auth_accounts_user_id_idx",
+          "columns": ["user_id"],
+          "isUnique": false
+        },
+        "runo_auth_accounts_provider_account_idx": {
+          "name": "runo_auth_accounts_provider_account_idx",
+          "columns": ["provider_id", "account_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "runo_auth_accounts_user_id_runo_auth_users_id_fk": {
+          "name": "runo_auth_accounts_user_id_runo_auth_users_id_fk",
+          "tableFrom": "runo_auth_accounts",
+          "tableTo": "runo_auth_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "runo_auth_sessions": {
+      "name": "runo_auth_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_auth_sessions_token_unique": {
+          "name": "runo_auth_sessions_token_unique",
+          "columns": ["token"],
+          "isUnique": true
+        },
+        "runo_auth_sessions_user_id_idx": {
+          "name": "runo_auth_sessions_user_id_idx",
+          "columns": ["user_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "runo_auth_sessions_user_id_runo_auth_users_id_fk": {
+          "name": "runo_auth_sessions_user_id_runo_auth_users_id_fk",
+          "tableFrom": "runo_auth_sessions",
+          "tableTo": "runo_auth_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "runo_auth_users": {
+      "name": "runo_auth_users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_auth_users_email_unique": {
+          "name": "runo_auth_users_email_unique",
+          "columns": ["email"],
+          "isUnique": true
+        },
+        "runo_auth_users_email_normalized_idx": {
+          "name": "runo_auth_users_email_normalized_idx",
+          "columns": ["lower(trim(\"email\"))"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "runo_auth_verifications": {
+      "name": "runo_auth_verifications",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_auth_verifications_identifier_idx": {
+          "name": "runo_auth_verifications_identifier_idx",
+          "columns": ["identifier"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "runo_metadata": {
+      "name": "runo_metadata",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "runo_metadata_user_id_runo_users_id_fk": {
+          "name": "runo_metadata_user_id_runo_users_id_fk",
+          "tableFrom": "runo_metadata",
+          "tableTo": "runo_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "runo_metadata_user_id_key_pk": {
+          "columns": ["user_id", "key"],
+          "name": "runo_metadata_user_id_key_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "runo_pendings": {
+      "name": "runo_pendings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "duration_min": {
+          "name": "duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_pendings_user_created_idx": {
+          "name": "runo_pendings_user_created_idx",
+          "columns": ["user_id", "created_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "runo_pendings_user_id_runo_users_id_fk": {
+          "name": "runo_pendings_user_id_runo_users_id_fk",
+          "tableFrom": "runo_pendings",
+          "tableTo": "runo_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "runo_pendings_user_id_id_pk": {
+          "columns": ["user_id", "id"],
+          "name": "runo_pendings_user_id_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runo_pendings_revision": {
+          "name": "runo_pendings_revision",
+          "value": "\"runo_pendings\".\"revision\" > 0"
+        },
+        "runo_pendings_duration": {
+          "name": "runo_pendings_duration",
+          "value": "\"runo_pendings\".\"duration_min\" > 0"
+        }
+      }
+    },
+    "runo_rate_limits": {
+      "name": "runo_rate_limits",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_rate_limits_expires_idx": {
+          "name": "runo_rate_limits_expires_idx",
+          "columns": ["expires_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runo_rate_limits_count": {
+          "name": "runo_rate_limits_count",
+          "value": "\"runo_rate_limits\".\"count\" > 0"
+        },
+        "runo_rate_limits_key": {
+          "name": "runo_rate_limits_key",
+          "value": "length(\"runo_rate_limits\".\"key\") = 64 and \"runo_rate_limits\".\"key\" not glob '*[^0-9a-f]*'"
+        }
+      }
+    },
+    "runo_routines": {
+      "name": "runo_routines",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "task_ids": {
+          "name": "task_ids",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_routines_user_created_idx": {
+          "name": "runo_routines_user_created_idx",
+          "columns": ["user_id", "created_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "runo_routines_user_id_runo_users_id_fk": {
+          "name": "runo_routines_user_id_runo_users_id_fk",
+          "tableFrom": "runo_routines",
+          "tableTo": "runo_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "runo_routines_user_id_id_pk": {
+          "columns": ["user_id", "id"],
+          "name": "runo_routines_user_id_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runo_routines_revision": {
+          "name": "runo_routines_revision",
+          "value": "\"runo_routines\".\"revision\" > 0"
+        },
+        "runo_routines_title": {
+          "name": "runo_routines_title",
+          "value": "length(trim(\"runo_routines\".\"title\")) between 1 and 1024"
+        },
+        "runo_routines_task_ids": {
+          "name": "runo_routines_task_ids",
+          "value": "json_valid(\"runo_routines\".\"task_ids\") and json_type(\"runo_routines\".\"task_ids\") = 'array' and json_array_length(\"runo_routines\".\"task_ids\") between 2 and 50"
+        }
+      }
+    },
+    "runo_settings": {
+      "name": "runo_settings",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "audio_enabled": {
+          "name": "audio_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "sound": {
+          "name": "sound",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'brown'"
+        },
+        "max_tone": {
+          "name": "max_tone",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 2
+        },
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'auto'"
+        },
+        "show_wallet": {
+          "name": "show_wallet",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'es'"
+        },
+        "task_order": {
+          "name": "task_order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "runo_settings_user_id_runo_users_id_fk": {
+          "name": "runo_settings_user_id_runo_users_id_fk",
+          "tableFrom": "runo_settings",
+          "tableTo": "runo_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runo_settings_max_tone": {
+          "name": "runo_settings_max_tone",
+          "value": "\"runo_settings\".\"max_tone\" between 0 and 2"
+        },
+        "runo_settings_locale": {
+          "name": "runo_settings_locale",
+          "value": "\"runo_settings\".\"locale\" in ('es', 'en')"
+        },
+        "runo_settings_revision": {
+          "name": "runo_settings_revision",
+          "value": "\"runo_settings\".\"revision\" > 0"
+        }
+      }
+    },
+    "runo_tasks": {
+      "name": "runo_tasks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "duration_min": {
+          "name": "duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "days": {
+          "name": "days",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "window_end": {
+          "name": "window_end",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fixed_time": {
+          "name": "fixed_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "short_step_title": {
+          "name": "short_step_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "short_step_duration_min": {
+          "name": "short_step_duration_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_tasks_user_archived_idx": {
+          "name": "runo_tasks_user_archived_idx",
+          "columns": ["user_id", "archived_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "runo_tasks_user_id_runo_users_id_fk": {
+          "name": "runo_tasks_user_id_runo_users_id_fk",
+          "tableFrom": "runo_tasks",
+          "tableTo": "runo_users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "runo_tasks_user_id_id_pk": {
+          "columns": ["user_id", "id"],
+          "name": "runo_tasks_user_id_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runo_tasks_revision": {
+          "name": "runo_tasks_revision",
+          "value": "\"runo_tasks\".\"revision\" > 0"
+        },
+        "runo_tasks_duration": {
+          "name": "runo_tasks_duration",
+          "value": "\"runo_tasks\".\"duration_min\" > 0"
+        },
+        "runo_tasks_priority": {
+          "name": "runo_tasks_priority",
+          "value": "\"runo_tasks\".\"priority\" between 1 and 3"
+        },
+        "runo_tasks_days": {
+          "name": "runo_tasks_days",
+          "value": "json_valid(\"runo_tasks\".\"days\") and json_type(\"runo_tasks\".\"days\") = 'array'"
+        },
+        "runo_tasks_window": {
+          "name": "runo_tasks_window",
+          "value": "(\"runo_tasks\".\"window_start\" is null and \"runo_tasks\".\"window_end\" is null) or (\"runo_tasks\".\"window_start\" is not null and \"runo_tasks\".\"window_end\" is not null and \"runo_tasks\".\"window_start\" < \"runo_tasks\".\"window_end\")"
+        },
+        "runo_tasks_fixed_time_window": {
+          "name": "runo_tasks_fixed_time_window",
+          "value": "\"runo_tasks\".\"fixed_time\" is null or \"runo_tasks\".\"window_start\" is null or (\"runo_tasks\".\"fixed_time\" >= \"runo_tasks\".\"window_start\" and \"runo_tasks\".\"fixed_time\" < \"runo_tasks\".\"window_end\")"
+        },
+        "runo_tasks_short_step": {
+          "name": "runo_tasks_short_step",
+          "value": "(\"runo_tasks\".\"short_step_title\" is null and \"runo_tasks\".\"short_step_duration_min\" is null) or (\"runo_tasks\".\"short_step_title\" is not null and \"runo_tasks\".\"short_step_duration_min\" is not null and \"runo_tasks\".\"short_step_duration_min\" > 0 and \"runo_tasks\".\"short_step_duration_min\" < \"runo_tasks\".\"duration_min\")"
+        }
+      }
+    },
+    "runo_users": {
+      "name": "runo_users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "auth_user_id": {
+          "name": "auth_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'America/Mexico_City'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "runo_users_auth_user_id_unique": {
+          "name": "runo_users_auth_user_id_unique",
+          "columns": ["auth_user_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "runo_users_auth_user_id_runo_auth_users_id_fk": {
+          "name": "runo_users_auth_user_id_runo_auth_users_id_fk",
+          "tableFrom": "runo_users",
+          "tableTo": "runo_auth_users",
+          "columnsFrom": ["auth_user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {
+      "runo_auth_users_email_normalized_idx": {
+        "columns": {
+          "lower(trim(\"email\"))": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}
