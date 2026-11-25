@@ -5,7 +5,7 @@ updated: 2026-11-25
 
 ## Goal
 
-Servir Avo en `https://avo.frutit.app/` con React Router v8, Cloudflare Workers, recursos estáticos, Wrangler y D1, dentro del plan gratuito. Preservar el último respaldo verificable de las dos cuentas y restaurarlo en producción con conteos, huellas y referencias consistentes. Confirmar en el dominio existente que ambas cuentas pueden recuperar sus datos guardados.
+Servir Avo en `https://avo.frutit.app/` con React Router v8, Cloudflare Workers, recursos estáticos, `cf` y D1, dentro del plan gratuito. Preservar el último respaldo verificable de las dos cuentas y restaurarlo en producción con conteos, huellas y referencias consistentes. Confirmar en el dominio existente que ambas cuentas pueden recuperar sus datos guardados.
 
 ## Out of scope
 
@@ -13,11 +13,11 @@ Planes de pago, rediseño, cambios de reglas de producto o identidad, limpieza d
 
 ## Next step
 
-En el corte de producción, crear la base D1 en la cuenta de Cloudflare de frutit.app y restaurar el último respaldo verificable con el [procedimiento de producción](../../docs/cloud/avo-cloudflare-production.md). La copia disponible es del 24 de noviembre; Neon rechazó la credencial guardada al solicitar una más reciente.
+Conectar Workers Builds al candidato con `npm run build` y `npm run deploy`. Confirmar las credenciales OAuth y habilitar el dominio en el corte según el [procedimiento](../../docs/cloud/avo-cloudflare-production.md). D1 `avo` ya contiene el respaldo verificado.
 
 ## Decisions
 
-- **Runtime elegido.** React Router v8 en Framework Mode, SSR, prerender de las rutas públicas, Vite con el plugin de Cloudflare y Wrangler. Se conservan los componentes React, Tailwind v4, Dexie y los catálogos ES/EN. El Worker recibe D1 por el binding `DB`. [Guía de React Router en Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/)
+- **Runtime elegido.** React Router v8 en Framework Mode, SSR y Vite con el plugin de Cloudflare. La CLI `cf` controla builds, despliegues, tipos y migraciones D1. Se conservan los componentes React, Tailwind v4, Dexie y los catálogos ES/EN. El Worker recibe la base restaurada por el binding `DB`. [Guía de React Router en Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/react-router/)
 - **Presupuesto.** Referencia del 2026-11-24 para Workers Free, 100 000 peticiones dinámicas diarias y 10 ms de CPU por petición HTTP. Para D1 Free, 500 MB por base, 5 GB por cuenta, 5 millones de filas leídas y 100 000 escritas al día, con hasta 50 consultas por invocación. El margen real depende de los demás proyectos de la cuenta. [Workers](https://developers.cloudflare.com/workers/platform/limits/) · [Precios de D1](https://developers.cloudflare.com/d1/platform/pricing/) · [Límites de D1](https://developers.cloudflare.com/d1/platform/limits/)
 
 ## Checklist
@@ -76,7 +76,7 @@ El exportador PostgreSQL y el importador D1 pasaron con fixtures PGlite sintéti
 ### 7. Publicar y recuperar las cuentas
 
 - [ ] Confirmar la cuenta Cloudflare Free y el respaldo a importar. Si se recupera acceso a Neon y hay escrituras posteriores al dump, exportar una copia final tras pausar el uso del sitio anterior.
-- [ ] Aplicar el esquema en una D1 nueva e importar y reconciliar el respaldo antes de habilitar el dominio.
+- [x] Aplicar el esquema en una D1 nueva e importar y reconciliar el respaldo antes de habilitar el dominio.
 - [ ] Publicar `avo` en `avo.frutit.app` con los secretos y callbacks vigentes. Confirmar inicio de sesión y recuperación de datos en las dos cuentas.
 
 ## Files
@@ -84,8 +84,8 @@ El exportador PostgreSQL y el importador D1 pasaron con fixtures PGlite sintéti
 - `app/routes/home.tsx`, `app/routes/privacy.tsx`, `app/routes/data-deletion.tsx`, `app/root.tsx` — páginas públicas, errores, metadata y recursos.
 - `lib/db/d1-schema.ts`, `drizzle-d1/0000_friendly_bullseye.sql`, `lib/db/d1-import.ts`, `lib/db/postgres-d1-export.ts` — modelo y transferencia por allowlist.
 - `lib/auth-d1.ts`, `lib/security/d1-rate-limit-store.ts`, `lib/sync/d1-repository.ts`, `lib/sync/d1-routes.ts` — auth, límites y sync D1.
-- `workers/app.ts`, `wrangler.jsonc`, `scripts/create-service-worker.mjs` — Worker, binding local y PWA.
-- `scripts/d1-recovery.mjs`, `scripts/prepare-cloudflare-production.mjs` y `docs/cloud/avo-cloudflare-production.md` — preparación y corte.
+- `workers/app.ts`, `cloudflare.config.ts`, `scripts/create-service-worker.mjs` — Worker, binding y PWA.
+- `scripts/d1-recovery.mjs`, `scripts/migrate-local-d1.mjs` y `docs/cloud/avo-cloudflare-production.md` — recuperación y corte.
 - `.github/workflows/app-ci.yml` — CI local con D1 sintética; se eliminó el workflow anterior que podía ejecutar migraciones PostgreSQL de producción.
 
 ## Validation
@@ -120,6 +120,9 @@ El exportador PostgreSQL y el importador D1 pasaron con fixtures PGlite sintéti
 | 2026-11-25 | Actualización PWA con pestaña abierta | En Chromium local, serví el build Next y después el Worker de React Router en el mismo origen `127.0.0.1:5191`, manteniendo abierta la pestaña anterior. El service worker nuevo cambió y tomó control; una recarga offline respondió. En una base Dexie `runo-user-migration-smoke` sintética se conservaron 1 sesión `paused`, 1 pendiente y 1 elemento de outbox `queued`. Los registros se sembraron directamente con el esquema local para aislar la persistencia; no es una prueba de login, sincronización de cuenta, Safari ni teléfono físico. Servidores, perfil Chromium y `.dev.vars` temporales se limpiaron.
 
 | 2026-11-25 | Paquete de recuperación y despliegue | Neon rechazó la credencial guardada de producción. Del dump verificable del 24 de noviembre se generaron un SQL y un manifiesto privados fuera de Git. En D1 local vacía, el SQL importó 2 usuarios, 3 vínculos, 59 tareas, 18 pendientes, 2 ajustes y 113 recibos, y coincidieron conteos y hashes sin violaciones FK. Build de producción y dry run para `avo` pasaron con IDs sintéticos. |
+
+| 2026-11-25 | Restauración en Cloudflare | `cf` creó D1 `avo`, aplicó el esquema e importó el respaldo del 24 de noviembre. Coincidieron conteos y huellas por tabla, sin referencias rotas. El build del commit fusionado pasó el dry run con el binding real. |
+| 2026-11-25 | Migración de CLI | `cf build` y `cf deploy --dry-run` empaquetaron la PWA y el binding de la D1 restaurada. La recuperación mediante `cf` pasó en una D1 local aislada y la verificación de solo lectura en producción volvió a coincidir. Pasaron 572 pruebas unitarias, 31 recorridos Chromium y los checks de tipos, formato y esquema. |
 
 ## Log
 

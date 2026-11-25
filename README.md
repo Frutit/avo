@@ -1,6 +1,6 @@
 # Avo
 
-Avo is a local first habits, tasks and timer app built with React Router, Cloudflare Workers, D1 and Dexie.
+Avo is a local first habits, tasks and timer app built with React Router, Cloudflare Workers, D1 and Dexie. It uses the Cloudflare CLI (`cf`) for development, builds, deployment and database operations.
 
 ## Local development
 
@@ -28,7 +28,7 @@ npm run check:tasks
 npm run build
 ```
 
-`npm run build` also creates `build/client/sw.js` from the Vite output. The default Wrangler config is for local development. Follow the [production runbook](docs/cloud/avo-cloudflare-production.md) to create the D1 binding, restore the private backup and publish Avo.
+`npm run build` uses `cf build` and includes the service worker in `.cloudflare/output/v1/`. The restored D1 database is declared in `cloudflare.config.ts`; local development and CI use simulated D1. Follow the [production runbook](docs/cloud/avo-cloudflare-production.md) to configure GitHub deployments and connect the domain.
 
 ## Data and runtime
 

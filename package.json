@@ -3,23 +3,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "react-router build && node scripts/create-service-worker.mjs",
-    "dev": "react-router dev",
+    "build": "cf build",
+    "dev": "cf dev --port 5173",
     "preview": "npm run build && vite preview",
     "start": "vite preview",
     "test:e2e": "playwright test",
-    "cf-typegen": "wrangler types",
-    "postinstall": "wrangler types",
+    "cf-typegen": "cf workers types",
     "test": "vitest run --exclude=lib/auth.test.ts --exclude=tests/account-data-route.test.ts --exclude=tests/auth-route.test.ts --exclude=tests/migration-runner-cli.test.ts --exclude=tests/migration-runner-postgres.test.ts --exclude=lib/db/migration-runner.test.ts --exclude=lib/db/inspection.test.ts",
-    "typecheck": "wrangler types && react-router typegen && tsc --noEmit -p tsconfig.cloudflare.json && tsc --noEmit -p tsconfig.node.json",
-    "lint": "eslint --max-warnings=0 app components lib workers vite.config.ts react-router.config.ts",
-    "format:check": "prettier --check app components lib workers tests scripts/create-service-worker.mjs scripts/d1-recovery.mjs scripts/prepare-cloudflare-production.mjs package.json wrangler.jsonc react-router.config.ts vite.config.ts",
+    "typecheck": "npm run cf-typegen && react-router typegen && tsc --noEmit -p tsconfig.cloudflare.json && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint --max-warnings=0 app components lib workers vite.config.ts react-router.config.ts cloudflare.config.ts",
+    "format:check": "prettier --check app components lib workers tests scripts/create-service-worker.mjs scripts/d1-recovery.mjs scripts/migrate-local-d1.mjs package.json cloudflare.config.ts react-router.config.ts vite.config.ts",
     "db:check": "drizzle-kit check --dialect=sqlite --out=./drizzle-d1",
-    "db:migrate:local": "wrangler d1 migrations apply avo --local --force",
+    "db:migrate:local": "node scripts/migrate-local-d1.mjs",
     "check:dependencies": "node scripts/check-dependencies.mjs",
     "test:dependencies": "node --test scripts/check-dependencies.test.mjs",
     "check:tasks": "node scripts/check-tasks.mjs",
-    "test:tasks": "node --test scripts/check-tasks.test.mjs"
+    "test:tasks": "node --test scripts/check-tasks.test.mjs",
+    "deploy": "cf deploy --prebuilt --mode production --no-provision"
   },
   "engines": {
     "node": "26.x"
@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@cloudflare/vite-plugin": "^1.70.1",
+    "@cloudflare/vite-plugin": "2.0.0-rc.5",
     "@cloudflare/workers-types": "^5.20261124.2",
     "@electric-sql/pglite": "^0.5.14",
     "@playwright/test": "^1.64.1",
@@ -53,6 +53,7 @@
     "@types/node": "^26.6.7",
     "@types/react": "^19.3.1",
     "@types/react-dom": "^19.3.0",
+    "cf": "1.0.0-rc.6",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
@@ -62,7 +63,6 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.74.0",
     "vite": "^8.0.3",
-    "vitest": "^4.1.12",
-    "wrangler": "^4.168.0"
+    "vitest": "^4.1.12"
   }
 }

@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, mkdtempSync, openSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { DatabaseSync } from "node:sqlite";
@@ -54,6 +55,16 @@ function sqlLiteral(value) {
   if (typeof value === "number" && Number.isSafeInteger(value)) return String(value);
   if (typeof value === "string") return "'" + value.replaceAll("'", "''") + "'";
   throw new Error("Unexpected SQLite value.");
+}
+
+function insertStatements(tables) {
+  return d1ImportTableOrder.flatMap((table, index) => {
+    const columns = d1ImportColumns[table];
+    return tables[index].map(
+      (row) =>
+        `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map((column) => sqlLiteral(row[column])).join(", ")});`,
+    );
+  });
 }
 
 async function buildRecovery(dump) {
@@ -182,13 +193,7 @@ async function buildRecovery(dump) {
     if (db.prepare(checks[0]).all().length) throw new Error("Foreign key check failed.");
 
     const tables = queries.map((sql) => db.prepare(sql).all());
-    const inserts = d1ImportTableOrder.flatMap((table, index) => {
-      const columns = d1ImportColumns[table];
-      return tables[index].map(
-        (row) =>
-          `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map((column) => sqlLiteral(row[column])).join(", ")});`,
-      );
-    });
+    const inserts = insertStatements(tables);
     if (inserts.some((sql) => Buffer.byteLength(sql) > 100_000))
       throw new Error("A row exceeds D1's SQL limit.");
     const folder = mkdtempSync(join(parent, "avo-d1-recovery-"));
@@ -206,59 +211,100 @@ async function buildRecovery(dump) {
   }
 }
 
-function checkTarget(mode, manifestPath, target, config, location, persistTo) {
-  if (!["--local", "--remote"].includes(location) || (persistTo && location !== "--local")) {
-    throw new Error(
-      "Specify --local or --remote explicitly. Only local mode accepts a persistence directory.",
+function d1Batch(target, statements, location, persistTo) {
+  const local = location === "--local";
+  const folder = mkdtempSync(join(tmpdir(), "avo-d1-batch-"));
+  try {
+    const file = join(folder, "queries.json");
+    writeFileSync(file, JSON.stringify(statements.map((sql) => ({ sql }))), { mode: 0o600 });
+    const output = command(
+      join(root, "node_modules", ".bin", "cf"),
+      [
+        "d1",
+        local ? "raw" : "query",
+        target,
+        "--batch",
+        "@" + file,
+        ...(local ? ["--local"] : []),
+        ...(persistTo ? ["--persist-to", persistTo] : []),
+      ],
+      "D1 command failed. Confirm the database ID, account and migrations before retrying.",
     );
+    const results = JSON.parse(output);
+    if (
+      !Array.isArray(results) ||
+      results.length !== statements.length ||
+      results.some((entry) => !entry.success)
+    ) {
+      throw new Error("D1 did not accept the batch.");
+    }
+    return results.map(({ results: rows }) =>
+      local
+        ? rows.rows.map((row) => Object.fromEntries(rows.columns.map((column, i) => [column, row[i]])))
+        : rows,
+    );
+  } finally {
+    rmSync(folder, { recursive: true });
   }
-  const output = command(
-    join(root, "node_modules", ".bin", "wrangler"),
-    [
-      "d1",
-      "execute",
-      target,
-      "--config",
-      config,
-      location,
-      "--json",
-      "--command",
-      [...queries, ...checks].join("; "),
-      ...(persistTo ? ["--persist-to", persistTo] : []),
-    ],
-    "Could not read D1. Confirm the database, config, and migrations.",
-  );
-  const results = JSON.parse(output);
-  const [foreignKeys, ...transientCounts] = results.slice(queries.length);
-  if (
-    results.length !== queries.length + checks.length ||
-    results.some((entry) => !entry.success) ||
-    foreignKeys.results.length ||
-    transientCounts.some((result) => result.results[0]?.count !== 0)
-  ) {
+}
+
+function checkRows(rows, expected) {
+  const [foreignKeys, ...transientCounts] = rows.slice(queries.length);
+  if (foreignKeys.length || transientCounts.some((result) => result[0]?.count !== 0)) {
     throw new Error("D1 has foreign key errors or unexpected session, verification or rate limit rows.");
   }
-  const actual = fingerprint(results.slice(0, queries.length).map((entry) => entry.results));
-  const expected =
-    mode === "empty" ? fingerprint(queries.map(() => [])) : JSON.parse(readFileSync(manifestPath, "utf8"));
+  const actual = fingerprint(rows.slice(0, queries.length));
   for (const table of d1ImportTableOrder) {
     if (actual[table].count !== expected[table]?.count || actual[table].sha256 !== expected[table]?.sha256) {
       throw new Error(`D1 reconciliation failed for ${table}.`);
     }
   }
-  console.log(
-    mode === "empty" ? "D1 is empty and ready to import." : "D1 row counts, hashes and foreign keys match.",
-  );
 }
 
-const [mode, input, target, config, location, persistTo] = process.argv.slice(2);
+function recoveryTarget(mode, file, target, location, persistTo) {
+  if (!["--local", "--remote"].includes(location) || (persistTo && location !== "--local")) {
+    throw new Error(
+      "Specify --local or --remote explicitly. Only local mode accepts a persistence directory.",
+    );
+  }
+  if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(target)) {
+    throw new Error("Specify the database UUID.");
+  }
+  const read = () => d1Batch(target, [...queries, ...checks], location, persistTo);
+  const empty = fingerprint(queries.map(() => []));
+  const expected = JSON.parse(readFileSync(mode === "restore" ? join(file, "manifest.json") : file, "utf8"));
+  if (mode === "restore") {
+    checkRows(read(), empty);
+    const db = new DatabaseSync(":memory:");
+    try {
+      db.exec(readFileSync(join(root, "drizzle-d1", "0000_friendly_bullseye.sql"), "utf8"));
+      try {
+        db.exec(readFileSync(join(file, "restore.sql"), "utf8"));
+      } catch {
+        throw new Error("The private SQL backup could not be loaded.");
+      }
+      const rows = [...queries, ...checks].map((sql) => db.prepare(sql).all());
+      checkRows(rows, expected);
+      const inserts = insertStatements(rows.slice(0, queries.length));
+      for (let offset = 0; offset < inserts.length; offset += 30) {
+        d1Batch(target, inserts.slice(offset, offset + 30), location, persistTo);
+      }
+    } finally {
+      db.close();
+    }
+  }
+  checkRows(read(), expected);
+  console.log("D1 row counts, hashes and foreign keys match.");
+}
+
+const [mode, input, target, location, persistTo] = process.argv.slice(2);
 try {
   if (mode === "prepare" && input && !target) await buildRecovery(input);
-  else if (["empty", "verify"].includes(mode) && input && target && config) {
-    checkTarget(mode, input, target, config, location, persistTo);
+  else if (["verify", "restore"].includes(mode) && input && target) {
+    recoveryTarget(mode, input, target, location, persistTo);
   } else {
     throw new Error(
-      "Usage: d1-recovery.mjs prepare <dump> | <empty|verify> <manifest> <database> <config> <--local|--remote> [persist-dir]",
+      "Usage: d1-recovery.mjs prepare <dump> | <verify|restore> <manifest-or-recovery-dir> <database-id> <--local|--remote> [persist-dir]",
     );
   }
 } catch (error) {

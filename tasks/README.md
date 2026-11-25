@@ -5,7 +5,7 @@ Git and linked archives preserve history.
 
 ## Current focus
 
-- [033 — Migrar Avo a Cloudflare Free](active/033-cloudflare-d1-migration.md) — candidato y respaldo verificados en local; sigue restaurar D1 y publicar el Worker de producción.
+- [033 — Migrar Avo a Cloudflare Free](active/033-cloudflare-d1-migration.md) — D1 restaurada y build con `cf` verificado; sigue conectar Workers Builds y preparar el corte.
 
 ## Backlog (in priority order)
 
