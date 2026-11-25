@@ -16,6 +16,7 @@
 # build tooling
 /.next/
 /.react-router/
+/.cloudflare/
 /.wrangler/
 /out/
 

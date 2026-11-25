@@ -1,52 +1,52 @@
-# Publicar Avo en Cloudflare Free
+# Publicar Avo en Cloudflare
 
-El Worker se llama `avo` y sirve `https://avo.frutit.app`. Los comandos se ejecutan desde la raíz de la rama de migración, con Node 26 y npm 11.20.0. GitHub ejecuta las comprobaciones de la app.
+El Worker `avo` usa la D1 `avo` a través del binding `DB`. La cuenta y el ID de la base ya están en `cloudflare.config.ts`. La D1 de producción ya contiene el respaldo verificado del 24 de noviembre. Para el despliegue normal basta con compilar el Worker y usar esa conexión.
 
-## Preparar la copia privada
+## Conectar GitHub en Workers Builds
 
-Usa el último respaldo de producción que puedas confirmar. Si hubo escrituras posteriores a la copia y vuelve a haber acceso a Neon, pausa el uso de ambas cuentas en el sitio anterior y toma un `pg_dump --format=custom` nuevo antes de convertirlo. Los cambios que todavía estén en IndexedDB se conservan en el navegador original mientras siga usando el mismo dominio.
+En la cuenta de Cloudflare que administra `frutit.app`, elige el repo `Frutit/avo` y configura lo siguiente:
+
+| Campo | Valor |
+| --- | --- |
+| Project name | `avo` |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Deploy command | `npm run deploy` |
+| Preview builds | Desactivado |
+
+El build usa `cf build` y empaqueta el service worker. El deploy usa `cf deploy --prebuilt --mode production --no-provision` para publicar ese mismo paquete. El dominio se conecta cuando se habilita el corte. Para preview builds se necesita otra base y una configuración separada.
+
+## Preparar el corte a avo.frutit.app
+
+1. En el Worker, abre **Settings → Variables & Secrets**. Guarda `BETTER_AUTH_SECRET` y `AVO_HMAC_SECRET` como valores aleatorios distintos de al menos 32 caracteres. Agrega los clientes OAuth existentes con `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` y/o `FACEBOOK_CLIENT_ID` y `FACEBOOK_CLIENT_SECRET` según las cuentas. Conserva los callbacks `https://avo.frutit.app/api/auth/callback/google` y `https://avo.frutit.app/api/auth/callback/facebook`.
+2. Guarda el destino, el estado del proxy y el TTL del CNAME anterior. Cuando los secretos estén listos, agrega la variable de build `AVO_ENABLE_CUSTOM_DOMAIN=true`. Elimina el CNAME de Vercel de `avo.frutit.app` al momento del corte y lanza un nuevo build y deploy.
+3. Abre `https://avo.frutit.app`, inicia sesión con las dos cuentas y verifica un dato conocido de cada una. Si falla el corte antes de que haya nuevas escrituras, puedes quitar el dominio personalizado y recuperar el DNS anterior si el servicio viejo sigue operativo. Si hubo escrituras en D1, conserva esa base.
+
+Para un despliegue manual desde un checkout limpio, autentica `cf` con `npx cf auth login` y usa Node 26 y npm 11.20.0:
 
 ```sh
 npm ci --ignore-scripts
+npm run build
+npm run deploy -- --dry-run
+npm run deploy
+```
+
+El comando manual omite el dominio por defecto. Para el corte, ejecuta `AVO_ENABLE_CUSTOM_DOMAIN=true npm run build` antes de desplegar. Si necesitas cargar secretos con el mismo deploy, pasa `npm run deploy -- --secrets-file /ruta/privada/avo-worker-secrets.json`.
+
+## Recuperar en una D1 nueva si fuera necesario
+
+Desde la raíz del repo, ejecuta el paso de preparación solo si tienes un dump de PostgreSQL y necesitas convertirlo. Usa el último respaldo de producción confirmado. La conversión usa Docker/OrbStack con `postgres:19` y prepara `restore.sql` y `manifest.json` junto al dump. Conserva los archivos fuera de Git. El SQL contiene datos de cuenta; omite los tokens y sesiones anteriores.
+
+```sh
 node scripts/d1-recovery.mjs prepare /ruta/privada/avo-production.dump
 ```
 
-La conversión usa Docker/OrbStack con la imagen `postgres:19`. Restaura el respaldo en un contenedor sin red y genera `restore.sql` y `manifest.json` junto al archivo original, en una carpeta privada. Conserva el dump original y la carpeta de recuperación fuera del repositorio. El SQL tiene datos de cuenta. El manifiesto registra conteos y huellas de las tablas admitidas, incluidos los vínculos de identidad y los recibos de sincronización. Las sesiones y tokens de proveedores quedan fuera de la importación y ambos usuarios deberán iniciar sesión de nuevo.
-
-## Restaurar en D1 antes del corte
-
-En la cuenta de Cloudflare que administra `frutit.app`, confirma el plan gratuito, crea una D1 nueva llamada `avo` y copia el ID de la cuenta y el ID de la base. Autentica Wrangler en esa cuenta. Sustituye los valores de ejemplo y la carpeta privada por los reales.
+Confirma que `D1_ID` identifica una base nueva, en la cuenta correcta. Con el Worker fuera de servicio durante la recuperación:
 
 ```sh
-node scripts/prepare-cloudflare-production.mjs "$ACCOUNT_ID" "$D1_ID"
-CFG=wrangler.production.jsonc
 RECOVERY=/ruta/privada/avo-d1-recovery-xxxxxx
-WRANGLER=./node_modules/.bin/wrangler
-
-"$WRANGLER" d1 migrations apply DB --config "$CFG" --remote &&
-node scripts/d1-recovery.mjs empty "$RECOVERY/manifest.json" DB "$CFG" --remote &&
-"$WRANGLER" d1 execute DB --config "$CFG" --remote --file "$RECOVERY/restore.sql" &&
-node scripts/d1-recovery.mjs verify "$RECOVERY/manifest.json" DB "$CFG" --remote
+npx cf d1 migrations apply "$D1_ID" --dir drizzle-d1 &&
+node scripts/d1-recovery.mjs restore "$RECOVERY" "$D1_ID" --remote
 ```
 
-Continúa cuando la verificación confirme que las huellas, los conteos y las referencias coinciden. Si falla una importación, verifica antes de reintentar. Si el destino quedó parcial, aparta esa base y usa otra nueva con su propio ID. Conserva ambas hasta identificar el problema.
-
-## Publicar en el dominio existente
-
-Prepara un JSON privado fuera del repositorio con `BETTER_AUTH_SECRET` y `AVO_HMAC_SECRET` con valores aleatorios distintos de al menos 32 caracteres. Incluye `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` y/o `FACEBOOK_CLIENT_ID` y `FACEBOOK_CLIENT_SECRET`, según cómo iniciaron sesión las dos cuentas. Conserva los clientes OAuth existentes para mantener los vínculos. Confirma sus callbacks en `https://avo.frutit.app/api/auth/callback/google` y `https://avo.frutit.app/api/auth/callback/facebook`.
-
-Compila con la configuración generada y empaqueta sin publicar:
-
-```sh
-VITE_SITE_URL=https://avo.frutit.app CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH="$CFG" npm run build &&
-"$WRANGLER" deploy --config build/server/wrangler.json --dry-run
-```
-
-En Cloudflare guarda el valor del registro DNS anterior de `avo.frutit.app` para poder restablecerlo. Si hay un CNAME de Vercel, quítalo al momento del corte para que Workers pueda crear el dominio personalizado. Ejecuta el despliegue con el mismo build:
-
-```sh
-SECRETS=/ruta/privada/avo-worker-secrets.json
-"$WRANGLER" deploy --config build/server/wrangler.json --secrets-file "$SECRETS"
-```
-
-Abre `https://avo.frutit.app`, inicia sesión con las cuentas existentes y revisa un dato conocido en cada cuenta. Si hay un fallo antes de la primera escritura en D1, recupera el DNS anterior si el servicio viejo sigue operativo. Si D1 ya recibió escrituras, conserva esa base y corrige el Worker para no perderlas. El respaldo original sigue disponible para recuperación.
+La restauración comprueba que la base esté vacía e importa por lotes. También compara las huellas y conteos del destino antes de que reciba tráfico. Si falla a mitad de la importación, conserva el destino para diagnóstico y usa una D1 vacía para repetir el proceso. Actualiza el ID del binding `DB` en `cloudflare.config.ts` solo al cambiar a otro destino verificado.
