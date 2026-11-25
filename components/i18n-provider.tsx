@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
 import { defaultLocale, intlLocales, isLocale, messages, timeZone, type Locale } from "@/lib/i18n/config";
 
 import { activeStorageKey, currentDatabaseName, openDatabase } from "@/lib/db/database";
@@ -96,7 +96,7 @@ export function I18nProvider({ children, revision = 0 }: { children: ReactNode; 
 
   return (
     <LocaleContext.Provider value={{ setLocale }}>
-      <NextIntlClientProvider locale={locale} messages={messages[locale]} timeZone={timeZone}>
+      <IntlProvider locale={locale} messages={messages[locale]} timeZone={timeZone}>
         {writeState.failed > 0 && localeDirty ? (
           <div role="alert" className="mx-auto max-w-3xl px-5 pt-4 text-sm leading-6">
             <p>{messages[locale].sync.localeSaveError}</p>
@@ -110,7 +110,7 @@ export function I18nProvider({ children, revision = 0 }: { children: ReactNode; 
           </div>
         ) : null}
         {children}
-      </NextIntlClientProvider>
+      </IntlProvider>
     </LocaleContext.Provider>
   );
 }

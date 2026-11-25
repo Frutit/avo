@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { WorkspaceFallback } from "./workspace-fallback";
 import es from "@/messages/es.json";
@@ -8,9 +9,11 @@ import en from "@/messages/en.json";
 function renderFallback(locale: "es" | "en") {
   const messages = locale === "es" ? es : en;
   return renderToStaticMarkup(
-    <NextIntlClientProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
-      <WorkspaceFallback retry={() => {}} />
-    </NextIntlClientProvider>,
+    <IntlProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
+      <MemoryRouter>
+        <WorkspaceFallback retry={() => {}} />
+      </MemoryRouter>
+    </IntlProvider>,
   );
 }
 

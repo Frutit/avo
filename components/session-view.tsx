@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useLocale, useMessages, useTranslations } from "next-intl";
+import { useLocale, useMessages, useTranslations } from "use-intl";
 import { openDatabase } from "@/lib/db/database";
 import {
   completeSessionWithCredit,
@@ -63,7 +63,7 @@ export function SessionView({
   const confirm = useTranslations("franja.confirm");
   const common = useTranslations("common");
   const reduceMotion = useReducedMotion();
-  const locale = useLocale();
+  const locale = useLocale() as "es" | "en";
   const messages = useMessages();
   const voicePhrases = useMemo(() => voicePhrasesFromMessages(messages), [messages]);
   const [current, setCurrent] = useState(session);

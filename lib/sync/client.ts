@@ -57,7 +57,7 @@ async function request(
   if (!response.ok && response.status !== 304) {
     let code = "request_failed";
     try {
-      const data = await response.json();
+      const data = (await response.json()) as { error?: unknown };
       if (typeof data.error === "string") code = data.error;
     } catch {}
     throw new SyncHttpError(

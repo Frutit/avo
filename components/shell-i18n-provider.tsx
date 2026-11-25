@@ -1,6 +1,6 @@
 "use client";
 
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
 import type { ReactNode } from "react";
 
 import { defaultLocale, messages, timeZone } from "@/lib/i18n/config";
@@ -12,8 +12,8 @@ import { defaultLocale, messages, timeZone } from "@/lib/i18n/config";
  */
 export function ShellI18nProvider({ children }: { children: ReactNode }) {
   return (
-    <NextIntlClientProvider locale={defaultLocale} messages={messages[defaultLocale]} timeZone={timeZone}>
+    <IntlProvider locale={defaultLocale} messages={messages[defaultLocale]} timeZone={timeZone}>
       {children}
-    </NextIntlClientProvider>
+    </IntlProvider>
   );
 }

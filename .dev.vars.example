@@ -1,0 +1,9 @@
+BETTER_AUTH_URL=http://localhost:5173
+BETTER_AUTH_SECRET=replace-with-at-least-32-random-characters
+AVO_HMAC_SECRET=replace-with-a-different-random-secret
+
+# OAuth providers stay optional for local development.
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# FACEBOOK_CLIENT_ID=
+# FACEBOOK_CLIENT_SECRET=

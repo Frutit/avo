@@ -28,6 +28,15 @@ const fixture = () => ({
 });
 test("accepts approved Node 26 and npm with script-disabled integrity-checked installs", () =>
   checkDependencyPolicy(fixture()));
+test("requires the parent's pinned tarball to authenticate bundled packages", () => {
+  const f = fixture();
+  f.lock.packages["node_modules/test"].bundleDependencies = ["bundled"];
+  const path = "node_modules/test/node_modules/bundled";
+  f.lock.packages[path] = { version: "1.0.0", inBundle: true };
+  checkDependencyPolicy(f);
+  f.lock.packages["node_modules/test"].bundleDependencies = [];
+  assert.throws(() => checkDependencyPolicy(f), /Unverified bundled dependency/);
+});
 test("accepts Node 26 patch updates within engines while keeping the reproducible pin", () => {
   const f = fixture();
   f.nodeVersion = "26.14.0";

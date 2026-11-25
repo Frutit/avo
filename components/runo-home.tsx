@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
+import { Image } from "@/components/compat-image";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { Menu } from "@base-ui/react/menu";
 import { Toast } from "@base-ui/react/toast";
-import { useLocale, useMessages, useTranslations } from "next-intl";
+import { useLocale, useMessages, useTranslations } from "use-intl";
 import { openDatabase, type RunoDatabase } from "@/lib/db/database";
 import {
   closeDay,
@@ -149,7 +149,7 @@ function withoutReviewOccurrence(groups: ReviewGroups, occurrenceId: string): Re
 
 export function RunoHome() {
   const t = useTranslations();
-  const locale = useLocale();
+  const locale = useLocale() as "es" | "en";
   const { revision } = useWorkspace();
   const [view, setView] = useState<View>({ kind: "loading" });
   const [pendingStart, setPendingStart] = useState<{

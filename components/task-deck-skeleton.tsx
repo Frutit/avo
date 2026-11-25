@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DECK_BACK_SCALE } from "@/lib/ui/task-deck";
 import { useStartupLoadingVisible } from "./startup-loading-provider";

@@ -1,7 +1,7 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import type { ReactNode } from "react";
 
 export function HelpTip({ children, label }: { children: ReactNode; label?: string }) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { currentDatabaseName, openDatabase } from "@/lib/db/database";
 import { getSettings } from "@/lib/db/repository";
 import { writePreferences } from "@/lib/sync/preference-writer";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 import { GUEST_SPACE, LEGACY_DATABASE_NAME, removeSpaceStorage } from "@/lib/db/local-space";
 

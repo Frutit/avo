@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
+import { IntlProvider } from "use-intl";
 import { describe, expect, it } from "vitest";
 import { TaskDeckSkeleton } from "./task-deck-skeleton";
 import { RunoHome } from "./runo-home";
@@ -12,9 +12,9 @@ for (const locale of ["es", "en"] as const) {
   const messages = locale === "es" ? es : en;
   const render = (children: ReactNode) =>
     renderToStaticMarkup(
-      <NextIntlClientProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
+      <IntlProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
         {children}
-      </NextIntlClientProvider>,
+      </IntlProvider>,
     );
 
   describe(`task-card loading in ${locale}`, () => {

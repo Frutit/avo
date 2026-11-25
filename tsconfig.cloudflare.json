@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [".react-router/types/**/*", "app/**/*", "components/**/*", "lib/**/*", "messages/**/*", "workers/**/*", "worker-configuration.d.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "tests/**/*", "lib/auth.ts", "lib/auth-origins.ts", "lib/db/snapshot.ts", "lib/db/inspection.ts", "lib/db/migration-runner.ts", "lib/db/auth-adapter.ts", "lib/db/client.ts", "lib/db/schema.ts", "lib/db/auth-schema.ts", "lib/db/transaction.ts", "lib/env.ts", "lib/sync/server-*.ts", "lib/security/rate-limit.ts", "lib/security/rate-limit-store.ts", "lib/observability/**/*"],
+  "compilerOptions": { "baseUrl": ".",
+    "strict": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "types": ["vite/client", "node"],
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "rootDirs": [".", "./.react-router/types"],
+    "paths": {
+      "~/*": ["./app/*"], "@/*": ["./*"]
+    },
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  }
+}

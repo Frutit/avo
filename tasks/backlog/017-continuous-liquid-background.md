@@ -33,7 +33,7 @@ Owner: review the corrected long Settings background using fresh assets and conf
 ## Files
 
 - `app/globals.css` — liquid backgrounds and dock scrim.
-- `app/layout.tsx` — root/body sizing.
+- `app/root.tsx` — root/body sizing.
 - `e2e/settings-background.spec.ts` — supplement task 015's insufficient property-only regression with six rendered-pixel continuity checks.
 
 ## Decisions

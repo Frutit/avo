@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { HelpTip } from "./help-tip";
 
 const BREAK_MS = 10 * 60 * 1000;

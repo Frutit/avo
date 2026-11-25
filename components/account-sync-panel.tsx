@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { useWorkspace } from "./account-workspace";
 import type { WorkspaceValue } from "./workspace-context";
 

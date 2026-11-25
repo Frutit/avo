@@ -2,7 +2,7 @@
 
 import { Toast } from "@base-ui/react/toast";
 import { motion, useReducedMotion } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 export function RunoToaster() {
   const { toasts } = Toast.useToastManager();

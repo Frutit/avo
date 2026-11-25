@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { liveQuery } from "dexie";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 import { authClient, signOutAccount } from "@/lib/auth-client";
 import {
   currentDatabaseName,
@@ -163,7 +163,7 @@ export function AccountWorkspace({ children }: { children: ReactNode }) {
             signal: controller.signal,
           });
           if (response.ok) {
-            const data = await response.json();
+            const data = (await response.json()) as { user?: AccountIdentity };
             if (typeof data.user?.id !== "string") throw new Error("Invalid session response");
             accountId = data.user.id;
             identity = data.user;

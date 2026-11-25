@@ -6,7 +6,7 @@ import { Form } from "@base-ui/react/form";
 import { motion, useReducedMotion } from "motion/react";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 export function QuickTaskForm({
   busy = false,

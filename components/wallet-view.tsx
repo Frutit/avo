@@ -5,7 +5,7 @@ import { Field } from "@base-ui/react/field";
 import { Form } from "@base-ui/react/form";
 import { motion, useReducedMotion } from "motion/react";
 import { Toast } from "@base-ui/react/toast";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 import { HelpTip } from "./help-tip";
 import { openDatabase, type RunoDatabase } from "@/lib/db/database";

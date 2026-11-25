@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import Link from "next/link";
+import { useLocale, useTranslations } from "use-intl";
+import { Link } from "react-router";
 
 import { AccountControl } from "./account-control";
 import { AccountSyncPanel } from "./account-sync-panel";
@@ -195,10 +195,10 @@ export function SettingsView({
       <div className="mt-7 border-t border-line pt-5">
         <h3 className="text-lg font-semibold">{t("legal.title")}</h3>
         <nav aria-label={t("legal.title")} className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          <Link className="font-semibold underline underline-offset-4" href="/privacy">
+          <Link className="font-semibold underline underline-offset-4" to="/privacy">
             {t("legal.privacy")}
           </Link>
-          <Link className="font-semibold underline underline-offset-4" href="/data-deletion">
+          <Link className="font-semibold underline underline-offset-4" to="/data-deletion">
             {t("legal.deletion")}
           </Link>
         </nav>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations } from "use-intl";
 
 import { ConfirmDialog } from "./confirm-dialog";
 import { authClient, signOutAccount } from "@/lib/auth-client";

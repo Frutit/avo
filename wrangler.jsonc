@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "avo",
+  "main": "./workers/app.ts",
+  "compatibility_date": "2026-11-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./build/client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/robots.txt", "/sitemap.xml"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "avo",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle-d1",
+    },
+  ],
+}
