@@ -161,4 +161,11 @@ describe.each(["es", "en"] as const)("Settings sync actions in %s", (locale) => 
     expect(html).toContain(messages.details);
     expect(html).not.toContain(messages.retry);
   });
+
+  it("offers Google sign-in and hides Facebook when signed out", () => {
+    const accountMessages = (locale === "es" ? es : en).account;
+    const html = renderPanel(locale, { accountId: null, status: "guest" }, true);
+    expect(html).toContain(accountMessages.continueGoogle);
+    expect(html).not.toContain(accountMessages.continueFacebook);
+  });
 });

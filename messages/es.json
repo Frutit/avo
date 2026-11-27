@@ -585,7 +585,7 @@
   },
   "account": {
     "titleSignedIn": "Sesión iniciada",
-    "copy": "Estás usando Avo sin cuenta. Puedes seguir así o iniciar sesión con Google o Facebook. Al iniciar sesión, podrás respaldar tus hábitos, rutinas y pendientes en tu cuenta.",
+    "copy": "Estás usando Avo sin cuenta. Puedes seguir así o iniciar sesión con Google. Al iniciar sesión, podrás respaldar tus hábitos, rutinas y pendientes en tu cuenta.",
     "continueGoogle": "Continuar con Google",
     "continueFacebook": "Continuar con Facebook",
     "signOut": "Cerrar sesión",

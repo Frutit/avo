@@ -585,7 +585,7 @@
   },
   "account": {
     "titleSignedIn": "Signed in",
-    "copy": "You’re using Avo without an account. You can keep using it this way or sign in with Google or Facebook. After signing in, you can back up your habits, routines and pending items to your account.",
+    "copy": "You’re using Avo without an account. You can keep using it this way or sign in with Google. After signing in, you can back up your habits, routines and pending items to your account.",
     "continueGoogle": "Continue with Google",
     "continueFacebook": "Continue with Facebook",
     "signOut": "Sign out",

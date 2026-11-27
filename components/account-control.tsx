@@ -12,7 +12,7 @@ export function AccountControl() {
   const t = useTranslations("account");
   const sync = useTranslations("sync");
   const { data: session, isPending } = authClient.useSession();
-  const [busy, setBusy] = useState<"google" | "facebook" | "signout" | null>(null);
+  const [busy, setBusy] = useState<"google" | "signout" | null>(null);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const workspace = useWorkspace();
@@ -22,7 +22,7 @@ export function AccountControl() {
       : workspace.identity
     : session?.user;
 
-  async function signIn(provider: "google" | "facebook") {
+  async function signIn(provider: "google") {
     setBusy(provider);
     setError(null);
     try {
@@ -100,15 +100,6 @@ export function AccountControl() {
             >
               <span aria-hidden>G</span>
               {busy === "google" ? t("opening") : t("continueGoogle")}
-            </button>
-            <button
-              type="button"
-              className="runo-account-provider"
-              disabled={busy !== null}
-              onClick={() => void signIn("facebook")}
-            >
-              <span aria-hidden>f</span>
-              {busy === "facebook" ? t("opening") : t("continueFacebook")}
             </button>
           </div>
         </>
