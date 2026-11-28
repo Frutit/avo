@@ -1,7 +1,7 @@
 # 034 — Ordered next two tasks and flexible routines
 
 id: 034
-updated: 2026-11-27
+updated: 2026-11-28
 
 ## Goal
 
@@ -49,17 +49,20 @@ Owner visually reviews the two-card ordered Today flow and minimal routine creat
 ## Decisions
 
 - 2026-11-27 — Owner confirmed: (1) explicit habit order (`taskOrder`) wins over task importance (`priority`), (2) Today's open hand moves from 3 to 2 cards matching the 2 visible cards without category/hash shuffling, and (3) routine creation becomes visible and supports different weekdays per step while strictly preserving Avo's minimal, low-noise aesthetic.
+- 2026-11-28 — After owner-authorized read-only review of the 50-habit account snapshot, owner approved four follow-up fixes and repairing that account's frozen alphabetical `task_order` in D1 (with a private rollback backup): (A) active windows and any-time habits precede expired `missed` habits from earlier blocks, (B) reordering one block in Habits no longer freezes indices in untouched blocks, (C) unstarted routine step 1 respects saved `taskOrder` while `step > 1` takes focus immediately, and (D) routine step selection groups habits by daypart when multiple blocks exist.
 
 ## Validation
 
 | Date | Check / scope | Result | Evidence or limitation |
 |---|---|---|---|
 | 2026-11-27 | `npm run check:tasks` and `npm run test:tasks` | Passed | 31 tasks checked, 0 errors and 0 warnings after parking 033 and activating 034. |
-| 2026-11-27 | `npm test` | Passed | 578/578 tests across 57 files (including `taskOrder` overriding priority/seed, 2-card hand swaps with 3 tasks, mixed-weekday routines, and atomic inline routine step creation). |
-| 2026-11-27 | `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run db:check`, `git diff --check` | Passed | Zero errors or warnings across Workers/Node TS, ESLint, Prettier, and D1 Drizzle journal. |
-| 2026-11-27 | Isolated `npm run build` + `npm run test:e2e` | Passed | Built with `cf build` in `/tmp/avo-034-e2e.*` and passed 32/32 Chromium journeys, including 320px ordered cards, direct `Nueva rutina` + inline new step, ES/EN copy, and Axe. Local automated checks do not prove D1 production, OAuth, Safari, or physical mobile devices. |
+| 2026-11-28 | `npm test` | Passed | 580/580 tests across 57 files (including active blocks before `missed`, section-scoped `reorderTaskOrder`, routine step 1 respecting `taskOrder` and step 2 taking focus, 2-card swaps, and mixed-weekday routines). |
+| 2026-11-28 | `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run db:check`, `npm run check:tasks`, `git diff --check` | Passed | Zero errors or warnings across Workers/Node TS, ESLint, Prettier, D1 Drizzle journal, and task guard. |
+| 2026-11-28 | Authorized D1 `runo_settings.task_order` repair | Passed | Backed up pre-change row privately (`0600`) outside Git, updated the 50-habit account `task_order` to revision 5 in D1 `avo`, verified 50/50 keys, and simulated 08:00, 13:30, and 20:00 rankings. |
+| 2026-11-28 | Isolated `npm run build` + `npm run test:e2e` | Passed | Built with `cf build` in an isolated `/tmp` copy and passed 32/32 Chromium journeys, including daypart-grouped routine picker, 320px ordered cards, ES/EN copy, and Axe. Local automated checks do not prove OAuth, Safari, or physical mobile devices. |
 
 ## Log
 
 - 2026-11-27 — Diagnosed in Doctor mode why ordered habits could appear inverted in Today (`taskOrder` ignored in `selection.ts`, FNV-1a date hash + category diversity shuffling, 3-card hand trapping a hidden card in a 2-card deck, and `sameWeekdays` + hidden menu friction on routines). Owner approved the three design decisions and asked to proceed while keeping Avo's minimalist UI.
-- 2026-11-27 — Implemented `taskOrder`-first selection, 2-card `HAND_CAPACITY`, weekday-filtered routine progression, relaxed `sameWeekdays` across local/D1/Postgres/snapshot/guest-import, atomic inline step creation on routines, quiet `Nueva rutina` button + menu `Subir`/`Bajar`, and `"Siguiente"` / `"Up next"` deck copy. Passed 578/578 unit tests, typecheck, lint, format, `db:check`, `check:tasks`, and 32/32 isolated Chromium E2E tests. Ready for owner device review.
+- 2026-11-27 — Implemented `taskOrder`-first selection, 2-card `HAND_CAPACITY`, weekday-filtered routine progression, relaxed `sameWeekdays` across local/D1/Postgres/snapshot/guest-import, atomic inline step creation on routines, quiet `Nueva rutina` button + menu `Subir`/`Bajar`, and `"Siguiente"` / `"Up next"` deck copy.
+- 2026-11-28 — Owner authorized inspecting the primary 50-habit account snapshot to double-check real usage and approved applying four additional fixes plus repairing the frozen alphabetical `task_order` in D1 `avo`. Saved a private `0600` rollback backup of `runo_settings`, updated `task_order` to revision 5, updated selection/ordering/routine-picker code, and re-verified all unit, static, and isolated E2E checks. Ready for owner device review.

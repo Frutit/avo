@@ -64,4 +64,16 @@ describe("orden visual del editor", () => {
     const order = buildTaskOrder([serve, cook]);
     expect(sortTasksForDisplay([serve, cook], order).map((item) => item.id)).toEqual(["cook", "serve"]);
   });
+
+  it("reordenar una sección no congela índices en otras secciones no tocadas", () => {
+    const m1 = task("m1", { title: "Bañarme", window: { start: "05:00", end: "12:00" } });
+    const m2 = task("m2", { title: "Cambiarme", window: { start: "05:00", end: "12:00" } });
+    const a1 = task("a1", { title: "Comer", window: { start: "12:00", end: "19:00" } });
+    const a2 = task("a2", { title: "Hacer de comer", window: { start: "12:00", end: "19:00" } });
+
+    const next = reorderTaskOrder([m1, m2, a1, a2], ["m1", "m2"], "m2", "m1", {});
+    expect(next).toEqual({ m2: 0, m1: 1 });
+    expect(next.a1).toBeUndefined();
+    expect(next.a2).toBeUndefined();
+  });
 });

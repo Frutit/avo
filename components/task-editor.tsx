@@ -705,6 +705,7 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
   const [newStepTitle, setNewStepTitle] = useState("");
   const [newStepMinutes, setNewStepMinutes] = useState("10");
   const [stepComposerError, setStepComposerError] = useState<string | null>(null);
+  const [openRoutineBlocks, setOpenRoutineBlocks] = useState<Record<string, boolean>>({});
   const [todayOccurrences, setTodayOccurrences] = useState<Occurrence[]>([]);
   const [today] = useState(() => toLocalDate(Date.now()));
   const [now, setNow] = useState(() => Date.now());
@@ -1143,10 +1144,29 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
     setStepComposerError(null);
   }
 
+  function defaultRoutineBlocks(focusBlocks?: readonly string[]): Record<string, boolean> {
+    const ungrouped = active.filter((task) => !routineByTaskId.has(task.id));
+    if (ungrouped.length <= 8) {
+      return { morning: true, afternoon: true, night: true, any: true };
+    }
+    if (focusBlocks && focusBlocks.length > 0) {
+      return Object.fromEntries(focusBlocks.map((key) => [key, true]));
+    }
+    const nowTime = `${String(new Date(now).getHours()).padStart(2, "0")}:00`;
+    const currentBlock = blockForTime(nowTime);
+    const hasCurrent = ungrouped.some((task) => blockForTime(taskTime(task)) === currentBlock);
+    if (hasCurrent) return { [currentBlock]: true };
+    const firstNonEmpty = (["morning", "afternoon", "night", "any"] as const).find((key) =>
+      ungrouped.some((task) => blockForTime(taskTime(task)) === key),
+    );
+    return firstNonEmpty ? { [firstNonEmpty]: true } : { morning: true };
+  }
+
   function startNewRoutine() {
     setRoutineError(null);
     const availableCount = active.filter((task) => !routineByTaskId.has(task.id)).length;
     resetStepComposer(availableCount < 2);
+    setOpenRoutineBlocks(defaultRoutineBlocks());
     setRoutineDraft({ id: null, title: "", taskIds: [], newSteps: [] });
   }
 
@@ -1156,12 +1176,22 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
       (candidate) => candidate.id !== task.id && !routineByTaskId.has(candidate.id),
     );
     resetStepComposer(!otherAvailable);
+    setOpenRoutineBlocks(defaultRoutineBlocks([blockForTime(taskTime(task))]));
     setRoutineDraft({ id: null, title: task.title, taskIds: [task.id], newSteps: [] });
   }
 
   function startRoutineEdit(routine: Routine) {
     setRoutineError(null);
     resetStepComposer(false);
+    const memberBlocks = Array.from(
+      new Set(
+        routine.taskIds.flatMap((taskId) => {
+          const member = active.find((candidate) => candidate.id === taskId);
+          return member ? [blockForTime(taskTime(member))] : [];
+        }),
+      ),
+    );
+    setOpenRoutineBlocks(defaultRoutineBlocks(memberBlocks));
     setRoutineDraft({
       id: routine.id,
       title: routine.title,
@@ -1412,6 +1442,30 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
             (effectiveTaskOrder[a.id] ?? 0) - (effectiveTaskOrder[b.id] ?? 0),
         )
     : [];
+  const routineCandidateBlocks = (
+    [
+      { key: "morning", labelKey: "blocks.morning" },
+      { key: "afternoon", labelKey: "blocks.afternoon" },
+      { key: "night", labelKey: "blocks.night" },
+      { key: "any", labelKey: "blocks.none" },
+    ] as const
+  )
+    .map((block) => ({
+      ...block,
+      tasks: routineCandidates.filter((task) => blockForTime(taskTime(task)) === block.key),
+    }))
+    .filter((block) => block.tasks.length > 0);
+  function candidateMeta(task: Task): string {
+    const parts = [common("minutes", { count: task.durationMin })];
+    if (task.fixedTime) {
+      parts.push(task.fixedTime);
+    } else if (task.window && windowPreset(task.window.start, task.window.end) === "custom") {
+      parts.push(t("range", { from: task.window.start, to: task.window.end }));
+    }
+    const daysNote = shortDaysSummary(task.days);
+    if (daysNote) parts.push(daysNote);
+    return parts.join(" · ");
+  }
   const routineStepItems = routineDraft
     ? routineDraft.taskIds.flatMap((taskId) => {
         const existing = active.find((candidate) => candidate.id === taskId);
@@ -1528,9 +1582,8 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
   }
 
   function reorderSection(activeId: string, overId: string, visibleIds: string[]) {
-    const base = buildTaskOrder(active, orderRef.current);
-    const next = reorderTaskOrder(active, visibleIds, activeId, overId, base);
-    if (next === base) return;
+    const next = reorderTaskOrder(active, visibleIds, activeId, overId, orderRef.current);
+    if (next === orderRef.current) return;
     orderRef.current = next;
     setTaskOrder(next);
     try {
@@ -1580,8 +1633,12 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
       ) : null}
 
       {routineDraft ? (
-        <form onSubmit={saveRoutine} className="mt-5 border-y border-line py-6">
-          <h3 className="text-xl font-semibold">
+        <form
+          onSubmit={saveRoutine}
+          aria-labelledby="routine-form-title"
+          className="mt-5 border-y border-line py-6"
+        >
+          <h3 id="routine-form-title" className="text-xl font-semibold">
             {routineDraft.id ? t("routine.editTitle") : t("routine.createTitle")}
           </h3>
           <p className="mt-2 text-sm leading-6 text-muted">{t("routine.help")}</p>
@@ -1590,42 +1647,93 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
           </label>
           <input
             id="routine-title"
+            name="routineTitle"
             value={routineDraft.title}
             placeholder={t("routine.namePlaceholder")}
-            onChange={(event) => setRoutineDraft({ ...routineDraft, title: event.target.value })}
+            aria-invalid={Boolean(routineError) || undefined}
+            aria-describedby={routineError ? "routine-form-error" : undefined}
+            onChange={(event) => {
+              setRoutineDraft({ ...routineDraft, title: event.target.value });
+              if (routineError) setRoutineError(null);
+            }}
             maxLength={1024}
             className="mt-1 min-h-11 w-full rounded-none border border-control bg-background px-3 text-base"
           />
-          {routineCandidates.length > 0 ? (
+          {routineCandidateBlocks.length > 0 ? (
             <fieldset className="mt-5">
               <legend className="text-sm font-semibold">{t("routine.chooseSteps")}</legend>
-              <div className="mt-2 grid gap-2">
-                {routineCandidates.map((task) => {
-                  const daysNote = shortDaysSummary(task.days);
-                  return (
+              {routineCandidateBlocks.length === 1 ? (
+                <div className="mt-2 grid gap-1">
+                  {routineCandidateBlocks[0]!.tasks.map((task) => (
                     <label
                       key={task.id}
                       className="flex min-h-11 items-center gap-3 border-b border-line py-2"
                     >
                       <input
                         type="checkbox"
+                        name="routineStep"
+                        value={task.id}
                         checked={routineDraft.taskIds.includes(task.id)}
                         disabled={
                           !routineDraft.taskIds.includes(task.id) &&
                           routineDraft.taskIds.length >= MAX_ROUTINE_STEPS
                         }
                         onChange={() => toggleRoutineMember(task.id)}
-                        className="h-5 w-5 accent-foreground"
+                        className="h-5 w-5 shrink-0 accent-foreground"
                       />
                       <span className="min-w-0 flex-1 text-sm font-medium">{task.title}</span>
-                      <span className="text-xs text-muted">
-                        {taskTime(task) ?? t("list.noTime")}
-                        {daysNote ? ` · ${daysNote}` : ""}
-                      </span>
+                      <span className="shrink-0 text-xs text-muted">{candidateMeta(task)}</span>
                     </label>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2">
+                  {routineCandidateBlocks.map((block) => (
+                    <details
+                      key={block.key}
+                      className="task-block task-plain mt-3"
+                      open={Boolean(openRoutineBlocks[block.key])}
+                      onToggle={(event) => {
+                        const isOpen = event.currentTarget.open;
+                        setOpenRoutineBlocks((current) => ({ ...current, [block.key]: isOpen }));
+                      }}
+                    >
+                      <summary className="flex min-h-11 w-full cursor-pointer flex-wrap items-center justify-between gap-x-2 border-b-2 border-control pb-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+                          {t(block.labelKey)}
+                        </span>
+                        <span className="flex items-center gap-2 text-xs tabular-nums text-muted">
+                          {block.tasks.length}
+                          <DisclosureChevron />
+                        </span>
+                      </summary>
+                      <div className="grid gap-1">
+                        {block.tasks.map((task) => (
+                          <label
+                            key={task.id}
+                            className="flex min-h-11 items-center gap-3 border-b border-line py-2"
+                          >
+                            <input
+                              type="checkbox"
+                              name="routineStep"
+                              value={task.id}
+                              checked={routineDraft.taskIds.includes(task.id)}
+                              disabled={
+                                !routineDraft.taskIds.includes(task.id) &&
+                                routineDraft.taskIds.length >= MAX_ROUTINE_STEPS
+                              }
+                              onChange={() => toggleRoutineMember(task.id)}
+                              className="h-5 w-5 shrink-0 accent-foreground"
+                            />
+                            <span className="min-w-0 flex-1 text-sm font-medium">{task.title}</span>
+                            <span className="shrink-0 text-xs text-muted">{candidateMeta(task)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              )}
             </fieldset>
           ) : null}
           <div className="mt-4">
@@ -1647,15 +1755,18 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
                     </label>
                     <input
                       id="routine-step-title"
+                      name="newStepTitle"
                       value={newStepTitle}
                       placeholder={t("routine.newStepPlaceholder")}
                       maxLength={1024}
+                      aria-invalid={Boolean(stepComposerError) || undefined}
+                      aria-describedby={stepComposerError ? "routine-step-error" : undefined}
                       onChange={(event) => {
                         setNewStepTitle(event.target.value);
                         if (stepComposerError) setStepComposerError(null);
                       }}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter") {
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) {
                           event.preventDefault();
                           addInlineRoutineStep();
                         }
@@ -1697,7 +1808,7 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
                   </div>
                 </div>
                 {stepComposerError ? (
-                  <p className="form-error" role="alert">
+                  <p id="routine-step-error" className="form-error" role="alert">
                     {stepComposerError}
                   </p>
                 ) : null}
@@ -1746,7 +1857,7 @@ export function TaskEditor({ initialTaskId }: { initialTaskId?: string | null })
             )}
           </div>
           {routineError ? (
-            <p className="mt-4 text-sm" role="alert">
+            <p id="routine-form-error" className="mt-4 text-sm" role="alert">
               {routineError}
             </p>
           ) : null}

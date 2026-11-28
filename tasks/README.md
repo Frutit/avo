@@ -5,7 +5,7 @@ Git and linked archives preserve history.
 
 ## Current focus
 
-- [034 — Ordered next two tasks and flexible routines](active/034-ordered-next-two-tasks.md) — Verificado localmente (578 tests y 32 E2E); pendiente revisión visual del dueño en navegador/dispositivo.
+- [034 — Ordered next two tasks and flexible routines](active/034-ordered-next-two-tasks.md) — Verificado localmente (580 tests y 32 E2E) y `task_order` reparado en D1; pendiente revisión visual del dueño en navegador/dispositivo.
 
 ## Backlog (in priority order)
 

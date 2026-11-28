@@ -9,7 +9,6 @@ import {
   eligibleCandidates,
   HAND_CAPACITY,
   isMissedOccurrence,
-  proposeHand,
   type RoutineProgress,
   type SelectionInput,
 } from "@/lib/domain/selection";
@@ -1655,15 +1654,20 @@ function proposeHandWithDeferred(input: SelectionInput, deferredOccurrenceIds: r
     (candidate) => candidate.isDueAnchor || Boolean(candidate.routine && candidate.routine.step > 1),
   );
   const urgentIds = new Set(urgent.map((candidate) => candidate.occurrenceId));
-  const deferredCandidates = allEligible.filter(
-    (candidate) => !urgentIds.has(candidate.occurrenceId) && deferred.has(candidate.occurrenceId),
+  const nonUrgent = allEligible.filter((candidate) => !urgentIds.has(candidate.occurrenceId));
+  const activeDeferred = nonUrgent.filter(
+    (candidate) => !candidate.isMissed && deferred.has(candidate.occurrenceId),
   );
-  const prioritizedIds = [...urgent, ...deferredCandidates].map((candidate) => candidate.occurrenceId);
-  const remaining = proposeHand({
-    ...input,
-    excludeOccurrenceIds: [...new Set([...(input.excludeOccurrenceIds ?? []), ...prioritizedIds])],
-  });
-  return [...urgent, ...deferredCandidates, ...remaining];
+  const activeRegular = nonUrgent.filter(
+    (candidate) => !candidate.isMissed && !deferred.has(candidate.occurrenceId),
+  );
+  const missedDeferred = nonUrgent.filter(
+    (candidate) => candidate.isMissed && deferred.has(candidate.occurrenceId),
+  );
+  const missedRegular = nonUrgent.filter(
+    (candidate) => candidate.isMissed && !deferred.has(candidate.occurrenceId),
+  );
+  return [...urgent, ...activeDeferred, ...activeRegular, ...missedDeferred, ...missedRegular];
 }
 
 /**

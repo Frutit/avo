@@ -57,7 +57,7 @@ describe("elegibilidad antes de prioridad", () => {
     expect(proposeHand({ tasks: [archived, draft], occurrences: [], now: NOW, seed: "s" })).toEqual([]);
   });
 
-  it("prefiere una tarea con horario activo sobre una sin hora de igual importancia", () => {
+  it("prefiere una tarea con horario activo sobre una sin hora, y al vencer su ventana pasa después de las vigentes", () => {
     const coffee = task("coffee", {
       priority: 3,
       window: { start: "06:00", end: "12:00" },
@@ -71,14 +71,16 @@ describe("elegibilidad antes de prioridad", () => {
         seed: "s",
       })!.task.id,
     ).toBe("coffee");
-    expect(
-      chooseNextTask({
-        tasks: [vitamins, coffee],
-        occurrences: [],
-        now: at(12),
-        seed: "s",
-      }),
-    ).toMatchObject({ task: { id: "coffee" }, isMissed: true });
+    const afterNoon = eligibleCandidates({
+      tasks: [vitamins, coffee],
+      occurrences: [],
+      now: at(12),
+      seed: "s",
+    });
+    expect(afterNoon.map((c) => [c.task.id, c.isMissed])).toEqual([
+      ["vitamins", false],
+      ["coffee", true],
+    ]);
   });
 
   it("trata la franja como inicio incluido y fin excluido", () => {
@@ -98,15 +100,16 @@ describe("elegibilidad antes de prioridad", () => {
     expect(availabilityOf(gym, undefined, at(18))).toEqual({ eligible: true, isDueAnchor: true });
   });
 
-  it("conserva el desayuno missed por delante de una tarea sin hora", () => {
+  it("muestra primero la tarea sin hora vigente y deja el desayuno missed disponible después", () => {
     const tasks = [
       task("breakfast", { priority: 3, window: { start: "06:00", end: "12:00" } }),
       task("home", { priority: 1 }),
     ];
-    expect(chooseNextTask({ tasks, occurrences: [], now: at(20), seed: "s" })).toMatchObject({
-      task: { id: "breakfast" },
-      isMissed: true,
-    });
+    const ranked = eligibleCandidates({ tasks, occurrences: [], now: at(20), seed: "s" });
+    expect(ranked.map((c) => [c.task.id, c.isMissed])).toEqual([
+      ["home", false],
+      ["breakfast", true],
+    ]);
   });
 
   it.each(["completed", "already_done", "not_applicable", "in_progress"] as const)(
@@ -217,15 +220,15 @@ describe("progresión de rutinas", () => {
       })?.task.id,
     ).toBe(eat.id);
 
-    expect(
-      chooseNextTask({
-        tasks: [prepare, eat, unrelated],
-        occurrences: [],
-        routines: [routine],
-        now: at(13),
-        seed: "s",
-      }),
-    ).toMatchObject({ task: { id: prepare.id }, isMissed: true, routine: { step: 1 } });
+    const delayed = eligibleCandidates({
+      tasks: [prepare, eat, unrelated],
+      occurrences: [],
+      routines: [routine],
+      now: at(13),
+      seed: "s",
+    });
+    expect(delayed.map((c) => c.task.id)).toEqual([unrelated.id, prepare.id]);
+    expect(delayed[1]).toMatchObject({ task: { id: prepare.id }, isMissed: true, routine: { step: 1 } });
   });
 
   it("no muestra pasos de una rutina ya terminada ni una rutina archivada", () => {
@@ -338,23 +341,25 @@ describe("tareas missed", () => {
     expect(isMissedOccurrence(coffee, occurrence(coffee, { status: "in_progress" }), at(13))).toBe(false);
   });
 
-  it("mantiene una tarea missed de un horario anterior antes que una sin hora", () => {
+  it("no bloquea tareas vigentes con tareas missed de un bloque anterior", () => {
     const urgentAnyTime = task("urgent", { priority: 3 });
     const missedMorning = task("low", {
       priority: 1,
       window: { start: "06:00", end: "12:00" },
     });
-    expect(
-      chooseNextTask({
-        tasks: [urgentAnyTime, missedMorning],
-        occurrences: [],
-        now: at(13),
-        seed: "s",
-      })!.task.id,
-    ).toBe("low");
+    const ranked = eligibleCandidates({
+      tasks: [urgentAnyTime, missedMorning],
+      occurrences: [],
+      now: at(13),
+      seed: "s",
+    });
+    expect(ranked.map((c) => [c.task.id, c.isMissed])).toEqual([
+      ["urgent", false],
+      ["low", true],
+    ]);
   });
 
-  it("con la misma prioridad, missed gana a una ventana activa y a una tarea sin hora", () => {
+  it("prioriza la ventana activa y luego sin hora antes que las tareas missed de la mañana", () => {
     const lunch = task("lunch", {
       priority: 2,
       window: { start: "12:00", end: "19:00" },
@@ -371,7 +376,7 @@ describe("tareas missed", () => {
         now: at(13),
         seed: "s",
       }).map((candidate) => candidate.task.id),
-    ).toEqual(["missed", "lunch", "no-time"]);
+    ).toEqual(["lunch", "no-time", "missed"]);
   });
 
   it("ordena las missed por la ventana que terminó primero", () => {
@@ -437,17 +442,55 @@ describe("orden explícito del usuario y mano de dos tarjetas", () => {
     expect(ranked.map((c) => c.task.id)).toEqual(["anchor", "normal", "different"]);
   });
 
-  it("una ancla ya presentada sigue en su bloque horario pero no vuelve a ser takeover sobre un bloque anterior", () => {
-    const morning = task("morning", { priority: 1, window: { start: "06:00", end: "12:00" } });
+  it("una ancla ya presentada sigue en su bloque horario pero no vuelve a ser takeover sobre una tarea anterior vigente", () => {
+    const afternoonEarly = task("afternoon-early", {
+      priority: 1,
+      window: { start: "12:00", end: "19:00" },
+    });
     const anchor = task("anchor", { priority: 1, fixedTime: "18:00" });
     const ranked = eligibleCandidates({
-      tasks: [anchor, morning],
+      tasks: [anchor, afternoonEarly],
       occurrences: [occurrence(anchor, { anchorPresentedAt: at(18) })],
       now: at(18, 1),
       seed: "s",
     });
-    expect(ranked[0].task.id).toBe("morning");
+    expect(ranked[0].task.id).toBe("afternoon-early");
     expect(ranked[1].isDueAnchor).toBe(false);
+  });
+
+  it("el paso 1 de una rutina respeta taskOrder y al completarse el paso 2 toma el foco inmediatamente", () => {
+    const dress = task("dress", { title: "Cambiarme", window: { start: "05:00", end: "12:00" } });
+    const cats = task("cats", { title: "Comida a los gatos", window: { start: "05:00", end: "12:00" } });
+    const cook = task("cook", { title: "Hacer de comer", window: { start: "05:00", end: "12:00" } });
+    const eat = task("eat", { title: "Comer", window: { start: "05:00", end: "12:00" } });
+    const mealRoutine: Routine = {
+      id: "routine:morning-meal",
+      title: "Desayuno",
+      taskIds: [cook.id, eat.id],
+      createdAt: NOW,
+      updatedAt: NOW,
+      archivedAt: null,
+    };
+    const taskOrder = { dress: 0, cats: 1, cook: 2, eat: 3 };
+
+    const startOfMorning = proposeHand({
+      tasks: [dress, cats, cook, eat],
+      occurrences: [],
+      routines: [mealRoutine],
+      taskOrder,
+      now: at(7),
+    });
+    expect(startOfMorning.map((c) => c.task.id)).toEqual(["dress", "cats"]);
+
+    const afterCook = proposeHand({
+      tasks: [dress, cats, cook, eat],
+      occurrences: [occurrence(cook, { status: "completed" })],
+      routines: [mealRoutine],
+      taskOrder,
+      now: at(9),
+    });
+    expect(afterCook.map((c) => c.task.id)).toEqual(["eat", "dress"]);
+    expect(afterCook[0]?.routine).toMatchObject({ step: 2, total: 2 });
   });
 
   it("respeta taskOrder por encima de importancia, categoría y semilla de fecha", () => {

@@ -107,6 +107,8 @@ export function reorderTaskOrder(
   const insertAt = visibleFrom < visibleTo ? overIndex + 1 : overIndex;
   withoutActive.splice(insertAt, 0, activeTask);
 
+  if (withoutActive.every((task, index) => order[task.id] === index)) return order;
+
   const next = { ...order };
   withoutActive.forEach((task, index) => {
     next[task.id] = index;

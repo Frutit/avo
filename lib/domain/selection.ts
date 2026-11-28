@@ -241,35 +241,31 @@ export function eligibleCandidates(input: SelectionInput): Candidate[] {
     const routineFlow = Number(bRoutineFlow) - Number(aRoutineFlow);
     if (routineFlow) return routineFlow;
 
-    // Active routine steps sit above standalone habits, matching Habits' top group.
-    const routineStep = Number(Boolean(b.routine)) - Number(Boolean(a.routine));
-    if (routineStep) return routineStep;
-    if (a.routine && b.routine) {
-      const missedRoutine = Number(b.isMissed) - Number(a.isMissed);
-      if (missedRoutine) return missedRoutine;
-      const aRoutineBlock = blockOrderRank(blockForTime(taskTime(a.task)));
-      const bRoutineBlock = blockOrderRank(blockForTime(taskTime(b.task)));
-      if (aRoutineBlock !== bRoutineBlock) return aRoutineBlock - bRoutineBlock;
-      const aRoutineOrder = routineRankById.get(a.routine.id) ?? Number.MAX_SAFE_INTEGER;
-      const bRoutineOrder = routineRankById.get(b.routine.id) ?? Number.MAX_SAFE_INTEGER;
-      if (aRoutineOrder !== bRoutineOrder) return aRoutineOrder - bRoutineOrder;
-    }
-
-    const missed = Number(b.isMissed) - Number(a.isMissed);
+    // Active windows and any-time tasks come before expired earlier blocks (missed),
+    // so unfinished morning habits never bury afternoon or night habits.
+    const missed = Number(a.isMissed) - Number(b.isMissed);
     if (missed) return missed;
 
     const aBlock = blockOrderRank(blockForTime(taskTime(a.task)));
     const bBlock = blockOrderRank(blockForTime(taskTime(b.task)));
     if (aBlock !== bBlock) return aBlock - bBlock;
 
-    if (
-      a.isMissed &&
-      b.isMissed &&
-      a.task.window &&
-      b.task.window &&
-      !hasSavedTaskOrder(input.taskOrder, a.task.id) &&
-      !hasSavedTaskOrder(input.taskOrder, b.task.id)
-    ) {
+    const aHasOrder = hasSavedTaskOrder(input.taskOrder, a.task.id);
+    const bHasOrder = hasSavedTaskOrder(input.taskOrder, b.task.id);
+
+    // When a section has not been manually ordered, unstarted routines sit at the
+    // top of their block (matching Habits). Once ordered, taskOrder governs.
+    if (!aHasOrder && !bHasOrder) {
+      const routineStep = Number(Boolean(b.routine)) - Number(Boolean(a.routine));
+      if (routineStep) return routineStep;
+      if (a.routine && b.routine) {
+        const aRoutineOrder = routineRankById.get(a.routine.id) ?? Number.MAX_SAFE_INTEGER;
+        const bRoutineOrder = routineRankById.get(b.routine.id) ?? Number.MAX_SAFE_INTEGER;
+        if (aRoutineOrder !== bRoutineOrder) return aRoutineOrder - bRoutineOrder;
+      }
+    }
+
+    if (a.isMissed && b.isMissed && a.task.window && b.task.window && !aHasOrder && !bHasOrder) {
       const ended = clockMinutes(a.task.window.end) - clockMinutes(b.task.window.end);
       if (ended) return ended;
     }

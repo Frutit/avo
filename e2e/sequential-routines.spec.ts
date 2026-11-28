@@ -196,4 +196,26 @@ test("Hoy respeta el orden de Hábitos sobre la importancia y permite crear ruti
   await expect(page.locator('.peek-card[data-deck-role="front"] .first-title')).toHaveText("Hacer de comer");
   await expect(page.locator(".first-eyebrow")).toContainText("Rutina «Comida» · paso 1 de 3");
   await expect(page.locator('[data-deck-role="back"]')).toHaveCount(0);
+
+  // Con hábitos en distintos bloques, el selector de pasos los agrupa por momento sin ruido visual.
+  await page.getByRole("button", { name: "Hábitos", exact: true }).click();
+  await page.getByRole("button", { name: "Nuevo hábito", exact: true }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Preparar café");
+  await page.getByRole("button", { name: "Mañana", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+
+  await page.getByRole("button", { name: "Nuevo hábito", exact: true }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Leer libro");
+  await page.getByRole("button", { name: "Noche", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+
+  await page.getByRole("button", { name: "Nueva rutina", exact: true }).click();
+  const pickerFieldset = page.locator("fieldset").filter({ hasText: "Hábitos que incluir" });
+  await expect(pickerFieldset.locator("summary").filter({ hasText: "Mañana" })).toBeVisible();
+  await expect(pickerFieldset.locator("summary").filter({ hasText: "Noche" })).toBeVisible();
+  const groupedPickerAxe = await new AxeBuilder({ page })
+    .include("form")
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(groupedPickerAxe.violations).toEqual([]);
 });
