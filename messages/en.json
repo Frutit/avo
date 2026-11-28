@@ -475,7 +475,8 @@
       "title": "Privacy and data",
       "privacy": "Privacy notice",
       "deletion": "Delete my data"
-    }
+    },
+    "credit": "Created by"
   },
   "dataDeletion": {
     "localTitle": "Delete local guest data",

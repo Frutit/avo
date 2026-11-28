@@ -475,7 +475,8 @@
       "title": "Privacidad y datos",
       "privacy": "Aviso de privacidad",
       "deletion": "Eliminar mis datos"
-    }
+    },
+    "credit": "Creado por"
   },
   "dataDeletion": {
     "localTitle": "Borrar datos locales de invitado",

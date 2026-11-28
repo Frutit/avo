@@ -137,6 +137,10 @@ test.describe("public shell", () => {
 
     await settingsButton.click();
     await expect(page.getByRole("heading", { level: 2, name: "Ajustes" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "frutit.app" })).toHaveAttribute(
+      "href",
+      "https://frutit.app",
+    );
     await expect(
       page.getByText(/Al iniciar sesión, podrás respaldar tus hábitos, rutinas y pendientes/),
     ).toBeVisible();

@@ -75,17 +75,27 @@ export function DataDeletionContent() {
         </section>
       </article>
 
-      <nav
-        aria-label="Enlaces legales"
-        className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-5 text-sm"
-      >
-        <Link className="font-semibold underline underline-offset-4" to="/privacy">
-          Aviso de privacidad
-        </Link>
-        <Link className="font-semibold underline underline-offset-4" to="/">
-          Volver a Avo
-        </Link>
-      </nav>
+      <footer className="mt-8 border-t border-line pt-5">
+        <nav aria-label="Enlaces legales" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Link className="font-semibold underline underline-offset-4" to="/privacy">
+            Aviso de privacidad
+          </Link>
+          <Link className="font-semibold underline underline-offset-4" to="/">
+            Volver a Avo
+          </Link>
+        </nav>
+        <p className="mt-4 text-xs text-muted">
+          Creado por{" "}
+          <a
+            href="https://frutit.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-foreground underline underline-offset-4"
+          >
+            frutit.app
+          </a>
+        </p>
+      </footer>
     </main>
   );
 }

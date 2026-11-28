@@ -204,6 +204,20 @@ export function SettingsView({
         </nav>
       </div>
 
+      <footer className="mt-7 border-t border-line pt-5 text-xs text-muted">
+        <p>
+          {t("credit")}{" "}
+          <a
+            href="https://frutit.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-foreground underline underline-offset-4"
+          >
+            frutit.app
+          </a>
+        </p>
+      </footer>
+
       {error ? (
         <p className="mt-5 text-sm" role="alert">
           {error}
