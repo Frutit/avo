@@ -64,11 +64,7 @@ export function TaskDeck({ tasks, handId, busy, onOffer, onPromote, renderAction
     );
   const primary = tasks.find((task) => task.id === current.primaryId);
   const secondary = tasks.find((task) => task.id === current.secondaryId);
-  const orderedTasks = [
-    ...(primary ? [primary] : []),
-    ...(secondary ? [secondary] : []),
-    ...tasks.filter((task) => task !== primary && task !== secondary),
-  ];
+  const orderedTasks = [...(primary ? [primary] : []), ...(secondary ? [secondary] : [])];
   const turning = turn !== null;
 
   useEffect(() => {

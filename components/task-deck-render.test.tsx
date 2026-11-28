@@ -21,7 +21,7 @@ const tasks: FranjaTask[] = ["Bañarme", "Cepillarme los dientes", "Preparar mi 
   }),
 );
 
-function renderDeck(locale: "es" | "en", count = 3) {
+function renderDeck(locale: "es" | "en", count = 2) {
   const messages = locale === "es" ? es : en;
   return renderToStaticMarkup(
     <IntlProvider locale={locale} messages={messages} timeZone="America/Mexico_City">
@@ -47,20 +47,20 @@ function renderDeck(locale: "es" | "en", count = 3) {
 
 describe("superficies persistentes de Hoy durante SSR", () => {
   it.each(["es", "en"] as const)(
-    "renderiza una principal y una alternativa con etiquetas únicas en %s",
+    "renderiza una principal y una siguiente con etiquetas únicas sin tercera tarjeta oculta en %s",
     (locale) => {
-      const html = renderDeck(locale);
+      const html = renderDeck(locale, 3);
       const ids = Array.from(html.matchAll(/\bid="([^"]+)"/g), (match) => match[1]);
       const messages = locale === "es" ? es : en;
       expect(new Set(ids).size).toBe(ids.length);
-      expect(html.match(/class="peek-card"/g)).toHaveLength(3);
-      for (const role of ["front", "back", "hidden"]) {
+      expect(html.match(/class="peek-card"/g)).toHaveLength(2);
+      for (const role of ["front", "back"]) {
         expect(html.match(new RegExp(`data-deck-role="${role}"`, "g"))).toHaveLength(1);
       }
+      expect(html).not.toContain('data-deck-role="hidden"');
       expect(html).toContain(messages.franja.eyebrow);
       expect(html).toContain(messages.franja.otherOption);
       expect(html).toContain(messages.franja.chooseTask);
-      expect(html).toContain('aria-hidden="true" inert=""');
       expect(html).toContain('data-has-alternative="true"');
     },
   );

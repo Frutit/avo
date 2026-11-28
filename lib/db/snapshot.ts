@@ -326,12 +326,8 @@ export function parseBackupSnapshot(value: unknown): RunoSnapshot {
       throw new BackupError("Una rutina hace referencia a un hábito inexistente.");
     if (routine.archivedAt !== null) continue;
     const activeMembers = members.filter((task): task is Task => task !== undefined);
-    const first = activeMembers[0];
-    if (!first || activeMembers.some((task) => task.archivedAt !== null)) {
+    if (activeMembers.length === 0 || activeMembers.some((task) => task.archivedAt !== null)) {
       throw new BackupError("Una rutina activa no puede incluir hábitos archivados.");
-    }
-    if (activeMembers.some((task) => task.days.join(",") !== first.days.join(","))) {
-      throw new BackupError("Los hábitos de una rutina deben tener los mismos días.");
     }
     for (const taskId of routine.taskIds) {
       if (activeMembership.has(taskId))

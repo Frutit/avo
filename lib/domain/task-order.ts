@@ -1,13 +1,29 @@
 import type { Task } from "./types";
 import { blockForTime, taskTime, timeMinutes, type TaskBlock } from "./schedule";
 
-/** Visual order for the editor. It is intentionally not used by Today's priority engine. */
+/** Ordered position within each daypart section, shared by Habits and Today. */
 export type TaskOrder = Record<string, number>;
 
 const BLOCKS: readonly TaskBlock[] = ["morning", "afternoon", "night", "any"];
 
+export function blockOrderRank(block: TaskBlock): number {
+  const index = BLOCKS.indexOf(block);
+  return index >= 0 ? index : BLOCKS.length;
+}
+
+function windowEndMinutes(task: Task): number {
+  return task.window ? timeMinutes(task.window.end) : 24 * 60;
+}
+
 function compareDefault(a: Task, b: Task): number {
-  return timeMinutes(taskTime(a)) - timeMinutes(taskTime(b)) || a.title.localeCompare(b.title);
+  return (
+    timeMinutes(taskTime(a)) - timeMinutes(taskTime(b)) ||
+    windowEndMinutes(a) - windowEndMinutes(b) ||
+    b.priority - a.priority ||
+    a.createdAt - b.createdAt ||
+    a.title.localeCompare(b.title) ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  );
 }
 
 function orderOf(order: TaskOrder, task: Task): number | undefined {

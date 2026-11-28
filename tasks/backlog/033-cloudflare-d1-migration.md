@@ -1,7 +1,7 @@
 # 033 — Migrar Avo de Vercel y Neon a Cloudflare Free
 
 id: 033
-updated: 2026-11-25
+updated: 2026-11-27
 
 ## Goal
 
@@ -141,3 +141,4 @@ El exportador PostgreSQL y el importador D1 pasaron con fixtures PGlite sintéti
 - 2026-11-25 — Intenté recuperar el build Next anterior desde el commit base para probar el update con pestaña abierta. Next 16.4.3 mostró un advisory y Turbopack rechazó `node_modules/next` por estar fuera de la raíz aislada; no instalé dependencias. El objetivo queda pendiente de un workspace hermético o un dispositivo con la PWA anterior.
 - 2026-11-25 — Reconstruido Next en `/tmp` con dependencias locales y ejecutado el cambio de build en Chromium al mismo origen, con pestaña anterior abierta. La PWA nueva activó su service worker; recarga offline conservó la sesión pausada y la outbox sintética de cuenta en Dexie. Se completaron las comprobaciones que dependen solo del entorno local. El siguiente paso requiere configurar el entorno remoto de aceptación, autorizado por separado.
 - 2026-11-25 — El dueño priorizó conservar el estado guardado de sus dos cuentas y preparar el corte directo desde GitHub. Se difirió staging. La producción queda como siguiente operación en el procedimiento enlazado.
+- 2026-11-27 — Movida temporalmente a backlog para atender la tarea 034 (orden de hábitos en Hoy, mano de dos tarjetas y rutinas con días flexibles). El respaldo en D1 `avo` y el procedimiento de corte quedan listos para retomarse al cerrar 034.

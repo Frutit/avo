@@ -5,10 +5,11 @@ Git and linked archives preserve history.
 
 ## Current focus
 
-- [033 — Migrar Avo a Cloudflare Free](active/033-cloudflare-d1-migration.md) — D1 restaurada y build con `cf` verificado; sigue conectar Workers Builds y preparar el corte.
+- [034 — Ordered next two tasks and flexible routines](active/034-ordered-next-two-tasks.md) — Verificado localmente (578 tests y 32 E2E); pendiente revisión visual del dueño en navegador/dispositivo.
 
 ## Backlog (in priority order)
 
+- [033 — Migrar Avo a Cloudflare Free](backlog/033-cloudflare-d1-migration.md) — D1 restaurada y build con `cf` verificado; sigue conectar Workers Builds y preparar el corte.
 - [024 — Sequential routines](backlog/024-sequential-routines.md) — Routine flow and simplified Today task menu verified locally; owner device acceptance pending.
 
 - [023 — Unify task moments](backlog/023-unify-task-moments.md) — Owner's actual-browser/device visual acceptance remains pending.
@@ -47,7 +48,7 @@ The folder is the status. Do not duplicate it in a task header.
 Use `NNN-short-title.md` with an unused id across all task folders.
 Start from [TEMPLATE.md](TEMPLATE.md).
 
-Next id: **034** (IDs 008–010 remain retired; all IDs through 033 are assigned. Diagnostics was reassigned from branch-local 023 to 026 with owner approval during the merge).
+Next id: **035** (IDs 008–010 remain retired; all IDs through 034 are assigned. Diagnostics was reassigned from branch-local 023 to 026 with owner approval during the merge).
 
 ## Board conventions
 

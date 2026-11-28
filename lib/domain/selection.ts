@@ -1,6 +1,10 @@
 import { occurrenceIdFor } from "./occurrence";
-import { clockMinutes, localClockMinutes, toLocalDate, weekdayOf } from "./time";
+import { blockForTime, taskTime } from "./schedule";
+import { blockOrderRank, buildTaskOrder, type TaskOrder } from "./task-order";
+import { clockMinutes, localClockMinutes, toLocalDate, weekdayOf, type LocalDate } from "./time";
 import { TERMINAL_OCCURRENCE_STATUSES, type Occurrence, type Routine, type Task } from "./types";
+
+export const HAND_CAPACITY = 2;
 
 export type UnavailableReason =
   | "archived"
@@ -17,8 +21,9 @@ export interface SelectionInput {
   tasks: readonly Task[];
   occurrences: readonly Occurrence[];
   routines?: readonly Routine[];
+  taskOrder?: TaskOrder;
   now: number;
-  seed: string;
+  seed?: string;
   previousCategory?: string;
   excludeOccurrenceIds?: readonly string[];
 }
@@ -32,7 +37,7 @@ export interface RoutineProgress {
 
 export interface RoutineStepCandidate {
   task: Task;
-  progress: RoutineProgress;
+  progress?: RoutineProgress;
 }
 
 export interface Candidate {
@@ -95,15 +100,16 @@ export function availabilityOf(task: Task, occurrence: Occurrence | undefined, n
   };
 }
 
-/** Stable FNV-1a hash, not Math.random() and not locale-dependent ordering. */
-function score(seed: string, id: string): number {
-  let hash = 2166136261;
-  const value = JSON.stringify([seed, id]);
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
+/** Ordered active member habits that apply on the given local date. */
+export function routineStepsForDate(routine: Routine, tasks: readonly Task[], date: LocalDate): Task[] {
+  if (routine.archivedAt !== null) return [];
+  const weekday = weekdayOf(date);
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+  return routine.taskIds.flatMap((taskId) => {
+    const task = taskById.get(taskId);
+    if (!task || task.archivedAt !== null || !task.days.includes(weekday)) return [];
+    return [task];
+  });
 }
 
 export function currentRoutineStep(
@@ -114,25 +120,62 @@ export function currentRoutineStep(
 ): RoutineStepCandidate | undefined {
   if (routine.archivedAt !== null) return undefined;
   const date = toLocalDate(now);
+  const scheduled = routineStepsForDate(routine, tasks, date);
+  if (scheduled.length === 0) return undefined;
   const byTask = new Map(
     occurrences
       .filter((occurrence) => occurrence.date === date)
       .map((occurrence) => [occurrence.taskId, occurrence]),
   );
-  const taskById = new Map(tasks.map((task) => [task.id, task]));
-  const stepIndex = routine.taskIds.findIndex((taskId) => {
-    const occurrence = byTask.get(taskId);
+  const stepIndex = scheduled.findIndex((task) => {
+    const occurrence = byTask.get(task.id);
     return !occurrence || !TERMINAL_OCCURRENCE_STATUSES.has(occurrence.status);
   });
   if (stepIndex < 0) return undefined;
-  const taskId = routine.taskIds[stepIndex];
-  if (!taskId) return undefined;
-  const task = taskById.get(taskId);
-  if (!task || task.archivedAt !== null) return undefined;
+  const task = scheduled[stepIndex];
+  if (!task) return undefined;
   return {
     task,
-    progress: { id: routine.id, title: routine.title, step: stepIndex + 1, total: routine.taskIds.length },
+    ...(scheduled.length >= 2
+      ? {
+          progress: {
+            id: routine.id,
+            title: routine.title,
+            step: stepIndex + 1,
+            total: scheduled.length,
+          },
+        }
+      : {}),
   };
+}
+
+/** Resolves routine progress for an active session on its occurrence date. */
+export function routineProgressForTaskOnDate(
+  routine: Routine | undefined,
+  tasks: readonly Task[],
+  occurrences: readonly Occurrence[],
+  date: LocalDate,
+  taskId: string,
+): RoutineProgress | undefined {
+  if (!routine || routine.archivedAt !== null) return undefined;
+  const scheduled = routineStepsForDate(routine, tasks, date);
+  if (scheduled.length < 2) return undefined;
+  const byTask = new Map(
+    occurrences
+      .filter((occurrence) => occurrence.date === date)
+      .map((occurrence) => [occurrence.taskId, occurrence]),
+  );
+  const stepIndex = scheduled.findIndex((task) => {
+    const occurrence = byTask.get(task.id);
+    return !occurrence || !TERMINAL_OCCURRENCE_STATUSES.has(occurrence.status);
+  });
+  if (stepIndex < 0 || scheduled[stepIndex]?.id !== taskId) return undefined;
+  return { id: routine.id, title: routine.title, step: stepIndex + 1, total: scheduled.length };
+}
+
+function hasSavedTaskOrder(order: TaskOrder | undefined, id: string): boolean {
+  const value = order?.[id];
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 export function eligibleCandidates(input: SelectionInput): Candidate[] {
@@ -144,18 +187,30 @@ export function eligibleCandidates(input: SelectionInput): Candidate[] {
   );
   const excluded = new Set(input.excludeOccurrenceIds ?? []);
   const tasks = new Map(input.tasks.map((task) => [task.id, task]));
+  const effectiveOrder = buildTaskOrder(input.tasks, input.taskOrder);
   const groupedTaskIds = new Set<string>();
+  const activeRoutineStepIds = new Set<string>();
   const routineStepByTaskId = new Map<string, RoutineProgress>();
-  for (const routine of input.routines ?? []) {
-    if (routine.archivedAt !== null) continue;
+  const routineRankById = new Map<string, number>();
+
+  (input.routines ?? []).forEach((routine, index) => {
+    if (routine.archivedAt !== null) return;
+    const savedOrder = input.taskOrder?.[routine.id];
+    routineRankById.set(
+      routine.id,
+      typeof savedOrder === "number" && Number.isFinite(savedOrder) ? savedOrder : 1_000_000 + index,
+    );
     for (const taskId of routine.taskIds) groupedTaskIds.add(taskId);
     const step = currentRoutineStep(routine, input.tasks, input.occurrences, input.now);
-    if (step) routineStepByTaskId.set(step.task.id, step.progress);
-  }
-  const candidates: Candidate[] = [];
+    if (step) {
+      activeRoutineStepIds.add(step.task.id);
+      if (step.progress) routineStepByTaskId.set(step.task.id, step.progress);
+    }
+  });
 
+  const candidates: Candidate[] = [];
   for (const task of tasks.values()) {
-    if (groupedTaskIds.has(task.id) && !routineStepByTaskId.has(task.id)) continue;
+    if (groupedTaskIds.has(task.id) && !activeRoutineStepIds.has(task.id)) continue;
     const occurrenceId = occurrenceIdFor(task.id, date);
     if (excluded.has(occurrenceId)) continue;
     const occurrence = byTask.get(task.id);
@@ -171,29 +226,59 @@ export function eligibleCandidates(input: SelectionInput): Candidate[] {
       ...(routine ? { routine } : {}),
     });
   }
+
   return candidates.sort((a, b) => {
     const anchor = Number(b.isDueAnchor) - Number(a.isDueAnchor);
     if (anchor) return anchor;
-    // Keep the current routine step in the focus slot; later steps are still hidden.
+    if (a.isDueAnchor && b.isDueAnchor && a.task.fixedTime && b.task.fixedTime) {
+      const fixed = clockMinutes(a.task.fixedTime) - clockMinutes(b.task.fixedTime);
+      if (fixed) return fixed;
+    }
+
+    // An already-started routine finishes its next step before starting another card.
+    const aRoutineFlow = Boolean(a.routine && a.routine.step > 1);
+    const bRoutineFlow = Boolean(b.routine && b.routine.step > 1);
+    const routineFlow = Number(bRoutineFlow) - Number(aRoutineFlow);
+    if (routineFlow) return routineFlow;
+
+    // Active routine steps sit above standalone habits, matching Habits' top group.
     const routineStep = Number(Boolean(b.routine)) - Number(Boolean(a.routine));
     if (routineStep) return routineStep;
-    const priority = b.task.priority - a.task.priority;
-    if (priority) return priority;
-    // Same priority: an unresolved earlier window goes first, then the window
-    // that is active now, and finally a task with no time context.
+    if (a.routine && b.routine) {
+      const missedRoutine = Number(b.isMissed) - Number(a.isMissed);
+      if (missedRoutine) return missedRoutine;
+      const aRoutineBlock = blockOrderRank(blockForTime(taskTime(a.task)));
+      const bRoutineBlock = blockOrderRank(blockForTime(taskTime(b.task)));
+      if (aRoutineBlock !== bRoutineBlock) return aRoutineBlock - bRoutineBlock;
+      const aRoutineOrder = routineRankById.get(a.routine.id) ?? Number.MAX_SAFE_INTEGER;
+      const bRoutineOrder = routineRankById.get(b.routine.id) ?? Number.MAX_SAFE_INTEGER;
+      if (aRoutineOrder !== bRoutineOrder) return aRoutineOrder - bRoutineOrder;
+    }
+
     const missed = Number(b.isMissed) - Number(a.isMissed);
     if (missed) return missed;
-    if (a.isMissed && b.isMissed && a.task.window && b.task.window) {
+
+    const aBlock = blockOrderRank(blockForTime(taskTime(a.task)));
+    const bBlock = blockOrderRank(blockForTime(taskTime(b.task)));
+    if (aBlock !== bBlock) return aBlock - bBlock;
+
+    if (
+      a.isMissed &&
+      b.isMissed &&
+      a.task.window &&
+      b.task.window &&
+      !hasSavedTaskOrder(input.taskOrder, a.task.id) &&
+      !hasSavedTaskOrder(input.taskOrder, b.task.id)
+    ) {
       const ended = clockMinutes(a.task.window.end) - clockMinutes(b.task.window.end);
       if (ended) return ended;
     }
-    const relevance = Number(b.task.window !== undefined) - Number(a.task.window !== undefined);
-    if (relevance) return relevance;
-    const diversity =
-      Number(a.task.category === input.previousCategory) - Number(b.task.category === input.previousCategory);
-    if (diversity) return diversity;
-    const tie = score(input.seed, a.task.id) - score(input.seed, b.task.id);
-    return tie || (a.task.id < b.task.id ? -1 : a.task.id > b.task.id ? 1 : 0);
+
+    const aOrder = effectiveOrder[a.task.id] ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = effectiveOrder[b.task.id] ?? Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+
+    return a.task.id < b.task.id ? -1 : a.task.id > b.task.id ? 1 : 0;
   });
 }
 
@@ -201,21 +286,7 @@ export function chooseNextTask(input: SelectionInput): Candidate | undefined {
   return eligibleCandidates(input)[0];
 }
 
-/** Three is a capacity, never a reason to duplicate or force an ineligible task. */
+/** Two is the visible deck capacity: #1 in focus and #2 up next, with no hidden third card. */
 export function proposeHand(input: SelectionInput): Candidate[] {
-  const hand: Candidate[] = [];
-  const excluded = new Set(input.excludeOccurrenceIds ?? []);
-  let previousCategory = input.previousCategory;
-  while (hand.length < 3) {
-    const next = chooseNextTask({
-      ...input,
-      previousCategory,
-      excludeOccurrenceIds: [...excluded],
-    });
-    if (!next) break;
-    hand.push(next);
-    excluded.add(next.occurrenceId);
-    previousCategory = next.task.category;
-  }
-  return hand;
+  return eligibleCandidates(input).slice(0, HAND_CAPACITY);
 }

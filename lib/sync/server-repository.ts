@@ -195,18 +195,11 @@ async function validateRoutineMembers(
   excludeRoutineId?: string,
 ): Promise<void> {
   const members = await tx
-    .select({ id: schema.tasks.id, days: schema.tasks.days, archivedAt: schema.tasks.archivedAt })
+    .select({ id: schema.tasks.id, archivedAt: schema.tasks.archivedAt })
     .from(schema.tasks)
     .where(and(eq(schema.tasks.userId, ownerId), inArray(schema.tasks.id, [...taskIds])));
   if (members.length !== taskIds.length || members.some((task) => task.archivedAt !== null)) {
     throw new ProtocolError("routine_task_missing");
-  }
-  const [first] = members;
-  const firstDays = first?.days.toSorted((a, b) => a - b) ?? [];
-  if (
-    members.some((task) => JSON.stringify(task.days.toSorted((a, b) => a - b)) !== JSON.stringify(firstDays))
-  ) {
-    throw new ProtocolError("routine_days_mismatch");
   }
 
   const routines = await tx
@@ -235,14 +228,11 @@ async function validateRoutineTaskUpdate(tx: AccountDatabase, ownerId: string, t
   for (const routine of memberships) {
     const peerIds = routine.taskIds.filter((taskId) => taskId !== task.id);
     const peers = await tx
-      .select({ id: schema.tasks.id, days: schema.tasks.days })
+      .select({ id: schema.tasks.id })
       .from(schema.tasks)
       .where(and(eq(schema.tasks.userId, ownerId), inArray(schema.tasks.id, peerIds)));
-    if (
-      peers.length !== peerIds.length ||
-      peers.some((peer) => JSON.stringify(peer.days.toSorted((a, b) => a - b)) !== JSON.stringify(task.days))
-    ) {
-      throw new ProtocolError("routine_days_mismatch");
+    if (peers.length !== peerIds.length) {
+      throw new ProtocolError("routine_task_missing");
     }
   }
 }
@@ -402,16 +392,9 @@ export async function readAccountData(
           members.every((task) => task !== undefined);
         if (valid && routine.archivedAt === null) {
           const activeMembers = members.filter((task): task is (typeof tasks)[number] => task !== undefined);
-          const first = activeMembers[0];
           valid =
             activeMembers.length === routine.taskIds.length &&
             activeMembers.every((task) => task.archivedAt === null) &&
-            first !== undefined &&
-            activeMembers.every(
-              (task) =>
-                JSON.stringify(task.days.toSorted((a, b) => a - b)) ===
-                JSON.stringify(first.days.toSorted((a, b) => a - b)),
-            ) &&
             !routine.taskIds.some((taskId) => activeMembership.has(taskId));
           if (valid) for (const taskId of routine.taskIds) activeMembership.add(taskId);
         }

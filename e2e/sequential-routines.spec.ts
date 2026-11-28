@@ -130,3 +130,70 @@ test("la creación y presentación de rutinas también funciona en inglés", asy
   await expect(page.getByRole("menuitem", { name: "Not today ❌", exact: true })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Finish for today", exact: true })).toHaveCount(0);
 });
+
+test("Hoy respeta el orden de Hábitos sobre la importancia y permite crear rutinas directas con pasos nuevos", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Ajustes", exact: true })).toBeEnabled({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Hábitos", exact: true }).click();
+
+  // Eliminar los dos hábitos semilla para observar con nitidez las dos tarjetas nuevas.
+  for (const seedTitle of ["Cepillarme los dientes", "Bañarme"]) {
+    const row = page.getByRole("listitem").filter({ hasText: seedTitle });
+    await row.getByRole("button", { name: `${seedTitle}: Más opciones`, exact: true }).click();
+    await page.getByRole("menuitem", { name: "Eliminar", exact: true }).click();
+    await page.getByRole("button", { name: "Sí, eliminar", exact: true }).click();
+  }
+
+  // Crear primero «Servir comida» con importancia Alta y después «Hacer de comer» con Media.
+  await page.getByRole("button", { name: "Nuevo hábito", exact: true }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Servir comida");
+  await page.getByRole("combobox", { name: "Importancia", exact: true }).click();
+  await page.getByRole("option", { name: "Alta", exact: true }).click();
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+
+  await page.getByRole("button", { name: "Nuevo hábito", exact: true }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Hacer de comer");
+  await page.getByRole("button", { name: "Guardar", exact: true }).click();
+
+  // Subir «Hacer de comer» arriba de «Servir comida» desde el menú limpio de la fila.
+  const cookRow = page.getByRole("listitem").filter({ hasText: "Hacer de comer" });
+  await cookRow.getByRole("button", { name: "Hacer de comer: Más opciones", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Subir", exact: true }).click();
+
+  await page.getByRole("button", { name: "Hoy", exact: true }).click();
+  await expect(page.locator('.peek-card[data-deck-role="front"] .first-title')).toHaveText("Hacer de comer");
+  await expect(page.locator('.peek-card[data-deck-role="back"] .peek-back-title')).toHaveText(
+    "Servir comida",
+  );
+  await expect(page.locator('.peek-card[data-deck-role="back"] .peek-back-label').first()).toHaveText(
+    "Siguiente",
+  );
+  await expect(page.locator('.peek-card[data-deck-role="hidden"]')).toHaveCount(0);
+
+  // Ahora crear una rutina directa desde el botón «Nueva rutina» agregando también un paso nuevo ahí mismo.
+  await page.getByRole("button", { name: "Hábitos", exact: true }).click();
+  await page.getByRole("button", { name: "Nueva rutina", exact: true }).click();
+  await page.getByLabel("Nombre de la rutina", { exact: true }).fill("Comida");
+  await page.getByRole("checkbox", { name: /Hacer de comer/ }).check();
+  await page.getByRole("checkbox", { name: /Servir comida/ }).check();
+  await page.getByRole("button", { name: "+ Crear paso nuevo", exact: true }).click();
+  await page.getByLabel("Nombre del paso", { exact: true }).fill("Lavar trastes");
+  await page.getByRole("button", { name: "Agregar paso", exact: true }).click();
+
+  const routineFormAxe = await new AxeBuilder({ page })
+    .include("form")
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(routineFormAxe.violations).toEqual([]);
+
+  await page.getByRole("button", { name: "Guardar rutina", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Rutina: Comida", exact: true })).toContainText("3 pasos");
+
+  await page.getByRole("button", { name: "Hoy", exact: true }).click();
+  await expect(page.locator('.peek-card[data-deck-role="front"] .first-title')).toHaveText("Hacer de comer");
+  await expect(page.locator(".first-eyebrow")).toContainText("Rutina «Comida» · paso 1 de 3");
+  await expect(page.locator('[data-deck-role="back"]')).toHaveCount(0);
+});

@@ -46,13 +46,8 @@ function validateGuestRoutineReferences(current: GuestPreview): void {
     if (members.some((task) => !task)) throw new ProtocolError("routine_task_missing");
     if (routine.archivedAt !== null) continue;
     const activeMembers = members.filter((task): task is Task => task !== undefined);
-    const first = activeMembers[0];
-    if (!first || activeMembers.some((task) => task.archivedAt !== null)) {
+    if (activeMembers.length === 0 || activeMembers.some((task) => task.archivedAt !== null)) {
       throw new ProtocolError("routine_task_missing");
-    }
-    const days = JSON.stringify([...first.days].sort((a, b) => a - b));
-    if (activeMembers.some((task) => JSON.stringify([...task.days].sort((a, b) => a - b)) !== days)) {
-      throw new ProtocolError("routine_days_mismatch");
     }
     for (const taskId of routine.taskIds) {
       if (activeMembership.has(taskId)) throw new ProtocolError("routine_task_grouped");

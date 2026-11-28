@@ -258,11 +258,6 @@ function validateRoutineWrite(
   if (members.some((task) => !task)) throw new ProtocolError("routine_task_missing");
   if (value.archivedAt !== null) return;
   if (members.some((task) => task?.archivedAt !== null)) throw new ProtocolError("routine_task_missing");
-  const firstDays = members[0]?.days.toSorted((a, b) => a - b) ?? [];
-  if (
-    members.some((task) => JSON.stringify(task?.days.toSorted((a, b) => a - b)) !== JSON.stringify(firstDays))
-  )
-    throw new ProtocolError("routine_days_mismatch");
   if (
     [...routines.values()].some(
       (routine) =>
@@ -286,17 +281,7 @@ function validateTaskWrite(
   if (task.archivedAt !== null) throw new ProtocolError("routine_task_must_be_removed");
   for (const routine of memberships) {
     const peers = routine.taskIds.filter((id) => id !== task.id);
-    if (
-      peers.some((id) => !tasks.has(id)) ||
-      peers.some((id) => {
-        const peer = tasks.get(id)?.value as Task | undefined;
-        return (
-          JSON.stringify(peer?.days.toSorted((a, b) => a - b)) !==
-          JSON.stringify(task.days.toSorted((a, b) => a - b))
-        );
-      })
-    )
-      throw new ProtocolError("routine_days_mismatch");
+    if (peers.some((id) => !tasks.has(id))) throw new ProtocolError("routine_task_missing");
   }
 }
 

@@ -30,15 +30,8 @@ import { toLocalDate, weekdayOf } from "@/lib/domain/time";
 import { dateFromOccurrenceId } from "@/lib/domain/occurrence";
 import { chooseVoicePhrase, type VoiceTone } from "@/lib/domain/voice";
 import { voicePhrasesFromMessages } from "@/lib/i18n/voice";
-import {
-  TERMINAL_OCCURRENCE_STATUSES,
-  type Occurrence,
-  type Pending,
-  type Routine,
-  type Session,
-  type Task,
-} from "@/lib/domain/types";
-import type { RoutineProgress } from "@/lib/domain/selection";
+import type { Occurrence, Pending, Session, Task } from "@/lib/domain/types";
+import { routineProgressForTaskOnDate, type RoutineProgress } from "@/lib/domain/selection";
 import { BreakCard } from "./break-card";
 import { ConfirmDialog } from "./confirm-dialog";
 import { HelpTip } from "./help-tip";
@@ -94,21 +87,6 @@ function newSessionId(): string {
     return crypto.randomUUID();
   }
   return `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function routineProgressForSession(
-  routine: Routine | undefined,
-  occurrences: readonly Occurrence[],
-  taskId: string,
-): RoutineProgress | undefined {
-  if (!routine || routine.archivedAt !== null) return undefined;
-  const byTask = new Map(occurrences.map((occurrence) => [occurrence.taskId, occurrence]));
-  const step = routine.taskIds.findIndex((memberId) => {
-    const occurrence = byTask.get(memberId);
-    return !occurrence || !TERMINAL_OCCURRENCE_STATUSES.has(occurrence.status);
-  });
-  if (step < 0 || routine.taskIds[step] !== taskId) return undefined;
-  return { id: routine.id, title: routine.title, step: step + 1, total: routine.taskIds.length };
 }
 
 function toReviewTask(item: DayReviewItem): ReviewTask {
@@ -215,13 +193,16 @@ export function RunoHome() {
 
         if (active) {
           const sessionDate = dateFromOccurrenceId(active.occurrenceId);
-          const [activeRoutines, sessionOccurrences] = await Promise.all([
+          const [activeRoutines, activeTasks, sessionOccurrences] = await Promise.all([
             listRoutines(db),
+            listTasks(db),
             db.occurrences.where("date").equals(sessionDate).toArray(),
           ]);
-          const routine = routineProgressForSession(
+          const routine = routineProgressForTaskOnDate(
             activeRoutines.find((candidate) => candidate.taskIds.includes(active.taskSnapshot.id)),
+            activeTasks,
             sessionOccurrences,
+            sessionDate,
             active.taskSnapshot.id,
           );
           setView({ kind: "session", dateLabel, session: active, ...(routine ? { routine } : {}) });
@@ -1303,10 +1284,7 @@ function Franja({
     <>
       <p className="first-prompt">{t("prompt")}</p>
       <TaskDeck
-        key={`${view.handId}:${view.tasks
-          .map((task) => task.occurrenceId)
-          .sort()
-          .join("|")}`}
+        key={`${view.handId}:${view.tasks.map((task) => task.occurrenceId).join("|")}`}
         tasks={view.tasks}
         handId={view.handId}
         busy={busy}

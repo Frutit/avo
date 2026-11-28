@@ -24,16 +24,20 @@ export function findDueAnchor(
       .map((occurrence) => [occurrence.taskId, occurrence]),
   );
   const groupedTaskIds = new Set<string>();
+  const activeStepIds = new Set<string>();
   const routineByTaskId = new Map<string, RoutineProgress>();
   for (const routine of routines) {
     if (routine.archivedAt !== null) continue;
     for (const taskId of routine.taskIds) groupedTaskIds.add(taskId);
     const step = currentRoutineStep(routine, tasks, occurrences, now);
-    if (step) routineByTaskId.set(step.task.id, step.progress);
+    if (step) {
+      activeStepIds.add(step.task.id);
+      if (step.progress) routineByTaskId.set(step.task.id, step.progress);
+    }
   }
   const candidates: Array<DueAnchor & { minutes: number }> = [];
   for (const task of tasks) {
-    if (groupedTaskIds.has(task.id) && !routineByTaskId.has(task.id)) continue;
+    if (groupedTaskIds.has(task.id) && !activeStepIds.has(task.id)) continue;
     const fixedTime = task.fixedTime;
     if (!fixedTime) continue;
     const occurrence = byTask.get(task.id);

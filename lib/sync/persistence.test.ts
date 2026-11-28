@@ -501,7 +501,21 @@ describe("selective account persistence — real SQL in local PGlite", () => {
     ).rejects.toThrow("routine_task_missing");
     await expect(
       mutateAccountData(remote, ownerA, [routineMutation(baseRoutine("days", ["prepare", "tuesday"]))], 2),
-    ).rejects.toThrow("routine_days_mismatch");
+    ).resolves.toMatchObject([{ status: "applied" }]);
+    await mutateAccountData(
+      remote,
+      ownerA,
+      [
+        validMutation({
+          operationId: crypto.randomUUID(),
+          kind: "routine",
+          id: "days",
+          baseRevision: 1,
+          value: { ...baseRoutine("days", ["prepare", "tuesday"]), archivedAt: NOW + 1, updatedAt: NOW + 1 },
+        }),
+      ],
+      2,
+    );
     await expect(
       mutateAccountData(
         remote,

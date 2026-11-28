@@ -37,12 +37,16 @@ export function buildDayReview(input: {
   const date = toLocalDate(now);
   const taskById = new Map(tasks.map((task) => [task.id, task]));
   const groupedTaskIds = new Set<string>();
+  const activeStepIds = new Set<string>();
   const routineByTaskId = new Map<string, RoutineProgress>();
   for (const routine of routines) {
     if (routine.archivedAt !== null) continue;
     for (const taskId of routine.taskIds) groupedTaskIds.add(taskId);
     const step = currentRoutineStep(routine, tasks, occurrences, now);
-    if (step) routineByTaskId.set(step.task.id, step.progress);
+    if (step) {
+      activeStepIds.add(step.task.id);
+      if (step.progress) routineByTaskId.set(step.task.id, step.progress);
+    }
   }
   const missed: DayReviewItem[] = [];
   const later: DayReviewItem[] = [];
@@ -55,7 +59,7 @@ export function buildDayReview(input: {
     const liveTask = taskById.get(occurrence.taskId);
     if (!liveTask || liveTask.archivedAt !== null) continue;
     if (!liveTask.days.includes(weekdayOf(date))) continue;
-    if (groupedTaskIds.has(liveTask.id) && !routineByTaskId.has(liveTask.id)) continue;
+    if (groupedTaskIds.has(liveTask.id) && !activeStepIds.has(liveTask.id)) continue;
 
     const task = occurrence.agreement?.task ?? liveTask;
     const isMissed = isMissedOccurrence(liveTask, occurrence, now);

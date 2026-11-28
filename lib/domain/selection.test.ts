@@ -252,6 +252,72 @@ describe("progresión de rutinas", () => {
       }),
     ).toHaveLength(2);
   });
+
+  it("permite pasos con distintos días y avanza solo entre los pasos programados hoy", () => {
+    const weekdayCook = task("cook", { days: [1, 2, 3, 4, 5], window: { start: "12:00", end: "19:00" } });
+    const dailyServe = task("serve", {
+      days: [0, 1, 2, 3, 4, 5, 6],
+      window: { start: "12:00", end: "19:00" },
+    });
+    const dailyWash = task("wash", { days: [0, 1, 2, 3, 4, 5, 6], window: { start: "12:00", end: "19:00" } });
+    const flexibleRoutine: Routine = {
+      ...routine,
+      taskIds: [weekdayCook.id, dailyServe.id, dailyWash.id],
+    };
+
+    const monday = chooseNextTask({
+      tasks: [weekdayCook, dailyServe, dailyWash],
+      occurrences: [],
+      routines: [flexibleRoutine],
+      now: at(14),
+    });
+    expect(monday).toMatchObject({
+      task: { id: "cook" },
+      routine: { step: 1, total: 3 },
+    });
+
+    const sundayAfternoon = new Date(2026, 9, 25, 14, 0).getTime();
+    const sunday = chooseNextTask({
+      tasks: [weekdayCook, dailyServe, dailyWash],
+      occurrences: [],
+      routines: [flexibleRoutine],
+      now: sundayAfternoon,
+    });
+    expect(sunday).toMatchObject({
+      task: { id: "serve" },
+      routine: { step: 1, total: 2 },
+    });
+  });
+
+  it("prioriza una rutina ya empezada hoy por encima de otra rutina en paso 1", () => {
+    const r1Step1 = task("r1-1");
+    const r1Step2 = task("r1-2");
+    const r2Step1 = task("r2-1");
+    const r2Step2 = task("r2-2");
+    const firstRoutine: Routine = {
+      ...routine,
+      id: "r1",
+      title: "Primera",
+      taskIds: [r1Step1.id, r1Step2.id],
+    };
+    const secondRoutine: Routine = {
+      ...routine,
+      id: "r2",
+      title: "Segunda",
+      taskIds: [r2Step1.id, r2Step2.id],
+    };
+
+    const next = chooseNextTask({
+      tasks: [r1Step1, r1Step2, r2Step1, r2Step2],
+      occurrences: [occurrence(r2Step1, { status: "completed" })],
+      routines: [firstRoutine, secondRoutine],
+      now: NOW,
+    });
+    expect(next).toMatchObject({
+      task: { id: "r2-2" },
+      routine: { id: "r2", step: 2, total: 2 },
+    });
+  });
 });
 
 describe("tareas missed", () => {
@@ -272,20 +338,20 @@ describe("tareas missed", () => {
     expect(isMissedOccurrence(coffee, occurrence(coffee, { status: "in_progress" }), at(13))).toBe(false);
   });
 
-  it("respeta la prioridad antes de missed", () => {
-    const urgent = task("urgent", { priority: 3 });
-    const missedLow = task("low", {
+  it("mantiene una tarea missed de un horario anterior antes que una sin hora", () => {
+    const urgentAnyTime = task("urgent", { priority: 3 });
+    const missedMorning = task("low", {
       priority: 1,
       window: { start: "06:00", end: "12:00" },
     });
     expect(
       chooseNextTask({
-        tasks: [urgent, missedLow],
+        tasks: [urgentAnyTime, missedMorning],
         occurrences: [],
         now: at(13),
         seed: "s",
       })!.task.id,
-    ).toBe("urgent");
+    ).toBe("low");
   });
 
   it("con la misma prioridad, missed gana a una ventana activa y a una tarea sin hora", () => {
@@ -354,8 +420,8 @@ describe("tareas missed", () => {
   });
 });
 
-describe("priorización, variedad y bloques", () => {
-  it("ancla vigente antes de prioridad, luego prioridad antes de variedad", () => {
+describe("orden explícito del usuario y mano de dos tarjetas", () => {
+  it("ancla vigente va primero y luego el horario/orden definido", () => {
     const tasks = [
       task("normal", { priority: 3, category: "casa" }),
       task("anchor", { priority: 1, fixedTime: "18:00" }),
@@ -371,41 +437,61 @@ describe("priorización, variedad y bloques", () => {
     expect(ranked.map((c) => c.task.id)).toEqual(["anchor", "normal", "different"]);
   });
 
-  it("una ancla ya presentada sigue pendiente pero no vuelve a ser takeover", () => {
+  it("una ancla ya presentada sigue en su bloque horario pero no vuelve a ser takeover sobre un bloque anterior", () => {
+    const morning = task("morning", { priority: 1, window: { start: "06:00", end: "12:00" } });
     const anchor = task("anchor", { priority: 1, fixedTime: "18:00" });
-    const normal = task("normal", { priority: 3 });
     const ranked = eligibleCandidates({
-      tasks: [anchor, normal],
+      tasks: [anchor, morning],
       occurrences: [occurrence(anchor, { anchorPresentedAt: at(18) })],
       now: at(18, 1),
       seed: "s",
     });
-    expect(ranked[0].task.id).toBe("normal");
+    expect(ranked[0].task.id).toBe("morning");
     expect(ranked[1].isDueAnchor).toBe(false);
   });
 
-  it("desempata con categoría diferente si la prioridad es igual", () => {
-    const tasks = [task("a", { category: "casa" }), task("b", { category: "personal" })];
-    expect(
-      chooseNextTask({ tasks, occurrences: [], now: NOW, seed: "s", previousCategory: "casa" })!.task.id,
-    ).toBe("b");
+  it("respeta taskOrder por encima de importancia, categoría y semilla de fecha", () => {
+    const cook = task("cook", {
+      title: "Hacer de comer",
+      priority: 2,
+      category: "cocina",
+      window: { start: "12:00", end: "19:00" },
+    });
+    const serve = task("serve", {
+      title: "Servir comida",
+      priority: 3,
+      category: "cocina",
+      window: { start: "12:00", end: "19:00" },
+    });
+    const laundry = task("laundry", {
+      title: "Doblar ropa",
+      priority: 3,
+      category: "casa",
+      window: { start: "12:00", end: "19:00" },
+    });
+    const taskOrder = { cook: 0, serve: 1, laundry: 2 };
+
+    for (let day = 1; day <= 31; day += 1) {
+      const seed = `2026-11-${String(day).padStart(2, "0")}`;
+      const hand = proposeHand({
+        tasks: [laundry, serve, cook],
+        occurrences: [],
+        taskOrder,
+        now: at(14),
+        seed,
+        previousCategory: "cocina",
+      });
+      expect(hand.map((candidate) => candidate.task.id)).toEqual(["cook", "serve"]);
+    }
   });
 
-  it("la misma semilla da lo mismo sin depender del orden de entrada", () => {
-    const tasks = Array.from({ length: 10 }, (_, index) => task(`t${index}`));
+  it("la misma configuración da lo mismo sin depender del orden del arreglo de entrada", () => {
+    const tasks = Array.from({ length: 10 }, (_, index) => ({
+      ...task(`t${index}`),
+      createdAt: NOW + index,
+    }));
     const input = { tasks, occurrences: [], now: NOW, seed: "2026-10-26:1" };
     expect(proposeHand(input)).toEqual(proposeHand({ ...input, tasks: [...tasks].reverse() }));
-  });
-
-  it("cambiar semilla permite variedad entre tareas equivalentes", () => {
-    const tasks = Array.from({ length: 20 }, (_, index) => task(`t${index}`));
-    const choices = new Set(
-      Array.from(
-        { length: 12 },
-        (_, index) => chooseNextTask({ tasks, occurrences: [], now: NOW, seed: String(index) })!.task.id,
-      ),
-    );
-    expect(choices.size).toBeGreaterThan(1);
   });
 
   it("no rellena una mano corta ni duplica una tarea repetida en la entrada", () => {
@@ -415,14 +501,15 @@ describe("priorización, variedad y bloques", () => {
     expect(proposeHand({ tasks: [], occurrences: [], now: NOW, seed: "s" })).toEqual([]);
   });
 
-  it("propone tres como máximo y excluye lo aplazado sin mutar entradas", () => {
-    const tasks = Array.from({ length: 6 }, (_, index) => task(`t${index}`));
+  it("propone dos como máximo y excluye lo aplazado sin mutar entradas", () => {
+    const tasks = Array.from({ length: 6 }, (_, index) => ({
+      ...task(`t${index}`),
+      createdAt: NOW + index,
+    }));
     const before = structuredClone(tasks);
     const excluded = [occurrenceIdFor("t0", MONDAY)];
     const hand = proposeHand({ tasks, occurrences: [], now: NOW, seed: "s", excludeOccurrenceIds: excluded });
-    expect(hand).toHaveLength(3);
-    expect(new Set(hand.map((c) => c.task.id)).size).toBe(3);
-    expect(hand.some((c) => c.task.id === "t0")).toBe(false);
+    expect(hand.map((c) => c.task.id)).toEqual(["t1", "t2"]);
     expect(tasks).toEqual(before);
     expect(excluded).toHaveLength(1);
   });

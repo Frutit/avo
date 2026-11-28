@@ -7,6 +7,7 @@ import {
   availabilityOf,
   currentRoutineStep,
   eligibleCandidates,
+  HAND_CAPACITY,
   isMissedOccurrence,
   proposeHand,
   type RoutineProgress,
@@ -121,12 +122,6 @@ export async function createTask(db: RunoDatabase, id: string, input: TaskInput,
   return task;
 }
 
-function sameWeekdays(left: readonly number[], right: readonly number[]): boolean {
-  const leftDays = [...left].sort((a, b) => a - b);
-  const rightDays = [...right].sort((a, b) => a - b);
-  return leftDays.length === rightDays.length && leftDays.every((day, index) => day === rightDays[index]);
-}
-
 async function validateRoutineMembers(
   db: RunoDatabase,
   taskIds: readonly string[],
@@ -137,10 +132,6 @@ async function validateRoutineMembers(
     throw new DomainError("not_found", "Uno de los hábitos de la rutina ya no está disponible.");
   }
   const tasks = members.flatMap((task) => (task ? [task] : []));
-  const [first] = tasks;
-  if (!first || tasks.some((task) => !sameWeekdays(task.days, first.days))) {
-    throw new DomainError("validation", "Los hábitos de una rutina deben tener los mismos días.");
-  }
   const selectedIds = new Set(taskIds);
   const duplicate = (await db.routines.toArray()).some(
     (routine) =>
@@ -154,24 +145,6 @@ async function validateRoutineMembers(
   return tasks;
 }
 
-async function validateRoutineMemberDays(
-  db: RunoDatabase,
-  taskId: string,
-  days: readonly number[],
-): Promise<void> {
-  const routines = await db.routines.where("taskIds").equals(taskId).toArray();
-  for (const routine of routines) {
-    if (routine.archivedAt !== null) continue;
-    const members = await db.tasks.bulkGet(routine.taskIds);
-    if (members.some((task) => !task)) {
-      throw new DomainError("conflict", "Quita los hábitos faltantes de la rutina antes de editar sus días.");
-    }
-    if (members.some((task) => task && task.id !== taskId && !sameWeekdays(task.days, days))) {
-      throw new DomainError("conflict", "Los pasos de una rutina deben tener los mismos días.");
-    }
-  }
-}
-
 export async function updateTask(
   db: RunoDatabase,
   id: string,
@@ -183,10 +156,9 @@ export async function updateTask(
   assertId(actionId);
   assertTimestamp(now);
   const values = validateTaskInput(input);
-  return db.transaction("rw", [db.tasks, db.routines, db.events, ...syncTables(db)], async () => {
+  return db.transaction("rw", [db.tasks, db.events, ...syncTables(db)], async () => {
     const previous = await db.tasks.get(id);
     if (!previous) throw new DomainError("not_found", "Esa tarea ya no está.");
-    await validateRoutineMemberDays(db, id, values.days);
     const { inserted } = await appendEvent(db, {
       actionId,
       type: "task_updated",
@@ -226,10 +198,9 @@ export async function updateTaskWithCopies(
   const values = validateTaskInput(input);
   const copyValues = validateTaskBatch(copies, [id]);
 
-  return db.transaction("rw", [db.tasks, db.routines, db.events, ...syncTables(db)], async () => {
+  return db.transaction("rw", [db.tasks, db.events, ...syncTables(db)], async () => {
     const previous = await db.tasks.get(id);
     if (!previous) throw new DomainError("not_found", "Esa tarea ya no está.");
-    await validateRoutineMemberDays(db, id, values.days);
     const { inserted } = await appendEvent(db, {
       actionId,
       type: "task_updated",
@@ -303,17 +274,22 @@ export async function listTasks(db: RunoDatabase, includeArchived = false): Prom
   return db.tasks.filter((task) => includeArchived || task.archivedAt === null).sortBy("createdAt");
 }
 
-/** Creates an ordered routine from existing active habits without changing their IDs or history. */
+/** Creates an ordered routine from existing or newly added habits without changing their IDs or history. */
 export async function createRoutine(
   db: RunoDatabase,
   id: string,
   input: RoutineInput,
   now: number,
+  newTasks: readonly CreateTaskBatchItem[] = [],
 ): Promise<Routine> {
   assertId(id);
   assertTimestamp(now);
+  const taskValues = validateTaskBatch(newTasks);
   const values = validateRoutineInput(input);
-  return db.transaction("rw", [db.routines, db.tasks, ...syncTables(db)], async () => {
+  return db.transaction("rw", [db.routines, db.tasks, db.events, ...syncTables(db)], async () => {
+    if (taskValues.length > 0) {
+      await createTasksInTransaction(db, taskValues, now);
+    }
     const previous = await db.routines.get(id);
     if (previous) {
       if (
@@ -345,14 +321,19 @@ export async function updateRoutine(
   id: string,
   input: RoutineInput,
   now: number,
+  newTasks: readonly CreateTaskBatchItem[] = [],
 ): Promise<Routine> {
   assertId(id);
   assertTimestamp(now);
+  const taskValues = validateTaskBatch(newTasks);
   const values = validateRoutineInput(input);
-  return db.transaction("rw", [db.routines, db.tasks, ...syncTables(db)], async () => {
+  return db.transaction("rw", [db.routines, db.tasks, db.events, ...syncTables(db)], async () => {
     const previous = await db.routines.get(id);
     if (!previous || previous.archivedAt !== null) {
       throw new DomainError("not_found", "Esa rutina ya no está.");
+    }
+    if (taskValues.length > 0) {
+      await createTasksInTransaction(db, taskValues, now);
     }
     await validateRoutineMembers(db, values.taskIds, id);
     if (
@@ -1609,7 +1590,7 @@ function taskViewsForHand(
   const routineProgressByTaskId = new Map(
     routines.flatMap((routine) => {
       const step = currentRoutineStep(routine, tasks, occurrences, now);
-      return step ? [[step.task.id, step.progress] as const] : [];
+      return step?.progress ? [[step.task.id, step.progress] as const] : [];
     }),
   );
   return hand.occurrenceIds.flatMap((occurrenceId) => {
@@ -1669,22 +1650,27 @@ async function deferredOccurrenceIdsFromClosedHands(db: RunoDatabase, date: Loca
 
 function proposeHandWithDeferred(input: SelectionInput, deferredOccurrenceIds: readonly string[]) {
   const deferred = new Set(deferredOccurrenceIds);
-  const prioritized = eligibleCandidates(input).filter(
-    (candidate) => candidate.isDueAnchor || deferred.has(candidate.occurrenceId),
+  const allEligible = eligibleCandidates(input);
+  const urgent = allEligible.filter(
+    (candidate) => candidate.isDueAnchor || Boolean(candidate.routine && candidate.routine.step > 1),
   );
-  const prioritizedIds = prioritized.map((candidate) => candidate.occurrenceId);
+  const urgentIds = new Set(urgent.map((candidate) => candidate.occurrenceId));
+  const deferredCandidates = allEligible.filter(
+    (candidate) => !urgentIds.has(candidate.occurrenceId) && deferred.has(candidate.occurrenceId),
+  );
+  const prioritizedIds = [...urgent, ...deferredCandidates].map((candidate) => candidate.occurrenceId);
   const remaining = proposeHand({
     ...input,
     excludeOccurrenceIds: [...new Set([...(input.excludeOccurrenceIds ?? []), ...prioritizedIds])],
   });
-  return [...prioritized, ...remaining];
+  return [...urgent, ...deferredCandidates, ...remaining];
 }
 
 /**
  * Keeps one open franja per date. While at least one card remains, the open
- * franja is re-evaluated against the current clock and keeps at least two
- * visible cards when other eligible tasks exist. Once every card is resolved,
- * the next franja is created from the remaining tasks.
+ * franja is re-evaluated against the current clock and habit order, keeping up
+ * to two visible cards when other eligible tasks exist. Once every card is
+ * resolved, the next franja is created from the remaining tasks.
  */
 export async function ensureFranja(
   db: RunoDatabase,
@@ -1702,9 +1688,10 @@ export async function ensureFranja(
 
   return db.transaction(
     "rw",
-    [db.days, db.hands, db.tasks, db.occurrences, db.routines, db.events],
+    [db.days, db.hands, db.tasks, db.occurrences, db.routines, db.settings, db.events],
     async () => {
-      const routines = await db.routines.toArray();
+      const [routines, settings] = await Promise.all([db.routines.toArray(), db.settings.get("preferences")]);
+      const taskOrder = settings?.taskOrder;
       const pendingToday = pendingCount(occurrences, date);
       const day = await db.days.get(date);
       const swapsRemaining = Math.max(0, 3 - (day?.swapsUsed ?? 0));
@@ -1738,10 +1725,10 @@ export async function ensureFranja(
           await closeHand(db, hand, now, "resolved");
           hand = undefined;
         } else {
-          // Re-evaluate the open franja with the current clock. Started/partial
-          // cards keep their place; the rest can be reordered or replaced by a
-          // better current candidate. Swapped cards stay out of this hand and
-          // are prioritized when a later hand is formed.
+          // Re-evaluate the open franja with the current clock and saved order.
+          // Started/partial cards keep their place unless a due anchor or an
+          // already-started routine step takes the focus slot. Swapped cards
+          // stay out of this hand and return when a later hand is formed.
           const occurrenceById = new Map(currentOccurrences.map((occurrence) => [occurrence.id, occurrence]));
           const taskById = new Map(currentTasks.map((task) => [task.id, task]));
           const protectedIds = hand.occurrenceIds.filter((occurrenceId) => {
@@ -1762,20 +1749,26 @@ export async function ensureFranja(
               seed,
               excludeOccurrenceIds: hand.deferredOccurrenceIds,
               routines,
+              taskOrder,
             },
             deferredFromClosedHands,
           );
           const occurrenceIds: string[] = [];
+          const top = ranked[0];
+          if (top && (top.isDueAnchor || Boolean(top.routine && top.routine.step > 1))) {
+            occurrenceIds.push(top.occurrenceId);
+          }
           for (const occurrenceId of protectedIds) {
+            if (occurrenceIds.length >= HAND_CAPACITY) break;
             if (!occurrenceIds.includes(occurrenceId)) occurrenceIds.push(occurrenceId);
           }
           for (const candidate of ranked) {
-            if (occurrenceIds.length >= 3) break;
+            if (occurrenceIds.length >= HAND_CAPACITY) break;
             if (!occurrenceIds.includes(candidate.occurrenceId)) {
               occurrenceIds.push(candidate.occurrenceId);
             }
           }
-          const nextIds = occurrenceIds.slice(0, 3);
+          const nextIds = occurrenceIds.slice(0, HAND_CAPACITY);
           const previousIds = hand.occurrenceIds;
           const unchanged =
             nextIds.length === previousIds.length &&
@@ -1797,6 +1790,7 @@ export async function ensureFranja(
               seed,
               excludeOccurrenceIds: [...excluded],
               routines,
+              taskOrder,
             }).length;
             const canSwap =
               swapsRemaining > 0 &&
@@ -1807,6 +1801,7 @@ export async function ensureFranja(
                 seed,
                 excludeOccurrenceIds: [...excluded, ...hand.deferredOccurrenceIds],
                 routines,
+                taskOrder,
               }).length > 0;
             return {
               hand,
@@ -1822,9 +1817,9 @@ export async function ensureFranja(
 
       const deferredFromClosedHands = await deferredOccurrenceIdsFromClosedHands(db, date);
       const candidates = proposeHandWithDeferred(
-        { tasks, occurrences, now, seed, routines },
+        { tasks, occurrences, now, seed, routines, taskOrder },
         deferredFromClosedHands,
-      ).slice(0, 3);
+      ).slice(0, HAND_CAPACITY);
       if (candidates.length === 0) {
         return {
           hand: null,
@@ -1858,6 +1853,7 @@ export async function ensureFranja(
         seed,
         excludeOccurrenceIds: [...excluded],
         routines,
+        taskOrder,
       }).length;
       return {
         hand: created,
@@ -1957,69 +1953,75 @@ export async function swapFranjaTask(
   assertId(occurrenceId);
   assertTimestamp(now);
 
-  return db.transaction("rw", db.days, db.hands, db.sessions, db.events, db.routines, async () => {
-    const routines = await db.routines.toArray();
-    const hand = await db.hands.get(handId);
-    if (!hand || hand.status !== "open") return { swapped: false, reason: "not_in_hand" };
+  return db.transaction(
+    "rw",
+    [db.days, db.hands, db.sessions, db.events, db.routines, db.settings],
+    async () => {
+      const [routines, settings] = await Promise.all([db.routines.toArray(), db.settings.get("preferences")]);
+      const taskOrder = settings?.taskOrder;
+      const hand = await db.hands.get(handId);
+      if (!hand || hand.status !== "open") return { swapped: false, reason: "not_in_hand" };
 
-    const day = await db.days.get(hand.date);
-    if (!day || day.closedAt != null) return { swapped: false, reason: "closed" };
+      const day = await db.days.get(hand.date);
+      if (!day || day.closedAt != null) return { swapped: false, reason: "closed" };
 
-    const active = await db.sessions
-      .filter((session) => ["running", "paused", "awaiting_confirmation"].includes(session.status))
-      .first();
-    if (active) return { swapped: false, reason: "active_session" };
+      const active = await db.sessions
+        .filter((session) => ["running", "paused", "awaiting_confirmation"].includes(session.status))
+        .first();
+      if (active) return { swapped: false, reason: "active_session" };
 
-    const index = hand.occurrenceIds.indexOf(occurrenceId);
-    if (index < 0) return { swapped: false, reason: "not_in_hand" };
-    const swapsUsed = day.swapsUsed ?? 0;
-    if (swapsUsed >= 3) return { swapped: false, reason: "no_swaps" };
+      const index = hand.occurrenceIds.indexOf(occurrenceId);
+      if (index < 0) return { swapped: false, reason: "not_in_hand" };
+      const swapsUsed = day.swapsUsed ?? 0;
+      if (swapsUsed >= 3) return { swapped: false, reason: "no_swaps" };
 
-    const occurrenceById = new Map(occurrences.map((occurrence) => [occurrence.id, occurrence]));
-    const original = occurrenceById.get(occurrenceId);
-    if (!original) return { swapped: false, reason: "not_in_hand" };
+      const occurrenceById = new Map(occurrences.map((occurrence) => [occurrence.id, occurrence]));
+      const original = occurrenceById.get(occurrenceId);
+      if (!original) return { swapped: false, reason: "not_in_hand" };
 
-    const excluded = new Set([...hand.occurrenceIds, ...hand.deferredOccurrenceIds, occurrenceId]);
-    const alternative = eligibleCandidates({
-      tasks,
-      occurrences,
-      now,
-      seed,
-      excludeOccurrenceIds: [...excluded],
-      routines,
-    }).find((candidate) => occurrenceById.has(candidate.occurrenceId));
-    if (!alternative) return { swapped: false, reason: "no_alternative" };
+      const excluded = new Set([...hand.occurrenceIds, ...hand.deferredOccurrenceIds, occurrenceId]);
+      const alternative = eligibleCandidates({
+        tasks,
+        occurrences,
+        now,
+        seed,
+        excludeOccurrenceIds: [...excluded],
+        routines,
+        taskOrder,
+      }).find((candidate) => occurrenceById.has(candidate.occurrenceId));
+      if (!alternative) return { swapped: false, reason: "no_alternative" };
 
-    const nextSwaps = Math.min(3, swapsUsed + 1) as Day["swapsUsed"];
-    const { inserted } = await appendEvent(db, {
-      actionId: `swap:${hand.id}:${occurrenceId}`,
-      type: "swapped",
-      at: now,
-      taskId: original.taskId,
-      occurrenceId,
-      handId: hand.id,
-      context: {
-        fromOccurrenceId: occurrenceId,
-        toOccurrenceId: alternative.occurrenceId,
-        swapsUsed: nextSwaps,
-      },
-    });
-    if (!inserted) return { swapped: false, reason: "not_in_hand" };
+      const nextSwaps = Math.min(3, swapsUsed + 1) as Day["swapsUsed"];
+      const { inserted } = await appendEvent(db, {
+        actionId: `swap:${hand.id}:${occurrenceId}`,
+        type: "swapped",
+        at: now,
+        taskId: original.taskId,
+        occurrenceId,
+        handId: hand.id,
+        context: {
+          fromOccurrenceId: occurrenceId,
+          toOccurrenceId: alternative.occurrenceId,
+          swapsUsed: nextSwaps,
+        },
+      });
+      if (!inserted) return { swapped: false, reason: "not_in_hand" };
 
-    const occurrenceIds = [...hand.occurrenceIds];
-    occurrenceIds[index] = alternative.occurrenceId;
-    const deferredOccurrenceIds = hand.deferredOccurrenceIds.includes(occurrenceId)
-      ? [...hand.deferredOccurrenceIds]
-      : [...hand.deferredOccurrenceIds, occurrenceId];
-    const updatedHand: Hand = { ...hand, occurrenceIds, deferredOccurrenceIds };
-    const updatedDay: Day = { ...day, swapsUsed: nextSwaps };
-    await db.hands.put(updatedHand);
-    await db.days.put(updatedDay);
-    return {
-      swapped: true,
-      hand: updatedHand,
-      day: updatedDay,
-      replacementOccurrenceId: alternative.occurrenceId,
-    };
-  });
+      const occurrenceIds = [...hand.occurrenceIds];
+      occurrenceIds[index] = alternative.occurrenceId;
+      const deferredOccurrenceIds = hand.deferredOccurrenceIds.includes(occurrenceId)
+        ? [...hand.deferredOccurrenceIds]
+        : [...hand.deferredOccurrenceIds, occurrenceId];
+      const updatedHand: Hand = { ...hand, occurrenceIds, deferredOccurrenceIds };
+      const updatedDay: Day = { ...day, swapsUsed: nextSwaps };
+      await db.hands.put(updatedHand);
+      await db.days.put(updatedDay);
+      return {
+        swapped: true,
+        hand: updatedHand,
+        day: updatedDay,
+        replacementOccurrenceId: alternative.occurrenceId,
+      };
+    },
+  );
 }

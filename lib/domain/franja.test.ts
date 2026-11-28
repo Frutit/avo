@@ -33,7 +33,7 @@ function occurrence(t: Task, patch: Partial<Occurrence> = {}): Occurrence {
 }
 
 describe("franja actual", () => {
-  it("muestra hasta tres y cuenta las elegibles que quedan", () => {
+  it("muestra hasta dos tarjetas visibles y cuenta las elegibles que quedan", () => {
     const tasks = [
       task("a", { priority: 3 }),
       task("b", { priority: 2 }),
@@ -41,8 +41,8 @@ describe("franja actual", () => {
       task("d", { priority: 1 }),
     ];
     const view = currentFranja({ tasks, occurrences: [], now: NOW, seed: "s" });
-    expect(view.candidates).toHaveLength(3);
-    expect(view.remainingEligible).toBe(1);
+    expect(view.candidates).toHaveLength(2);
+    expect(view.remainingEligible).toBe(2);
   });
 
   it("no rellena cuando hay menos de tres elegibles", () => {

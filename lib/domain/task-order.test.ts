@@ -57,4 +57,11 @@ describe("orden visual del editor", () => {
     const order = { morning: 0, any: 0 };
     expect(reorderTaskOrder(tasks, ["morning", "any"], "morning", "any", order)).toBe(order);
   });
+
+  it("respeta el orden de creación antes que el alfabético cuando empatan hora e importancia", () => {
+    const cook = { ...task("cook", { title: "Preparar comida", priority: 2 }), createdAt: NOW };
+    const serve = { ...task("serve", { title: "Acomodar platos", priority: 2 }), createdAt: NOW + 1000 };
+    const order = buildTaskOrder([serve, cook]);
+    expect(sortTasksForDisplay([serve, cook], order).map((item) => item.id)).toEqual(["cook", "serve"]);
+  });
 });
